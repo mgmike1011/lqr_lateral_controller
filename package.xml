@@ -3,7 +3,7 @@
 <package format="3">
   <name>lqr_lateral_controller</name>
   <version>1.0.0</version>
-  <description>LQR lateral controller implementation for F1Teenth AWSIM.</description>
+  <description>LQR lateral controller implementation for F1Tenth AWSIM.</description>
   <maintainer email="milosz.gajewski@student.put.poznan.pl">Milosz Gajewski</maintainer>
   <license>Apache License 2.0</license>
 
@@ -13,7 +13,8 @@
   <depend>launch_ros</depend>
   <depend>rclcpp</depend>
   <depend>rclcpp_components</depend>
-
+  <depend>trajectory_follower_base</depend>
+  
   <test_depend>ament_cmake_ros</test_depend>
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>autoware_lint_common</test_depend>

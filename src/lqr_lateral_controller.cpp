@@ -21,6 +21,18 @@ namespace lqr_lateral_controller
 
 LqrLateralController::LqrLateralController()
 {
+  // RCLCPP_INFO(m_logger, "LQR Lateral controller initialized.");
+}
+
+bool LqrLateralController::isReady([[maybe_unused]] const InputData & input_data)
+{
+  return true;
+}
+
+LateralOutput LqrLateralController::run([[maybe_unused]] const InputData & input_data)
+{
+  LateralOutput output;
+  return output;
 }
 
 int64_t LqrLateralController::foo(int64_t bar) const
