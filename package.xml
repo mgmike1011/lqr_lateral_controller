@@ -14,6 +14,9 @@
   <depend>rclcpp</depend>
   <depend>rclcpp_components</depend>
   <depend>trajectory_follower_base</depend>
+  <depend>autoware_auto_control_msgs</depend>
+  <depend>autoware_auto_planning_msgs</depend>
+  <depend>geometry_msgs</depend>
   
   <test_depend>ament_cmake_ros</test_depend>
   <test_depend>ament_lint_auto</test_depend>

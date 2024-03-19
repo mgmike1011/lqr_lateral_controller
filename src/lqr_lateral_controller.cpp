@@ -19,9 +19,23 @@
 namespace lqr_lateral_controller
 {
 
-LqrLateralController::LqrLateralController()
+LqrLateralController::LqrLateralController(rclcpp::Node & node)
+: clock_(node.get_clock())
 {
-  // RCLCPP_INFO(m_logger, "LQR Lateral controller initialized.");
+  RCLCPP_INFO(m_logger, "LQR Lateral controller initialized.");
+}
+// LqrLateralController::LqrLateralController()
+// {
+
+// }
+
+AckermannLateralCommand LqrLateralController::generateOutputControlCmd()
+{
+  AckermannLateralCommand output_cmd;
+  output_cmd.stamp = clock_->now();
+  output_cmd.steering_tire_angle = 1.0;
+
+  return output_cmd;
 }
 
 bool LqrLateralController::isReady([[maybe_unused]] const InputData & input_data)
@@ -29,9 +43,31 @@ bool LqrLateralController::isReady([[maybe_unused]] const InputData & input_data
   return true;
 }
 
-LateralOutput LqrLateralController::run([[maybe_unused]] const InputData & input_data)
+LateralOutput LqrLateralController::run(const InputData & input_data)
 {
+  current_pose_ = input_data.current_odometry.pose.pose;
+  trajectory_ = input_data.current_trajectory;
+  current_odometry_ = input_data.current_odometry;
+  current_steering_ = input_data.current_steering;
+
+  // setResampledTrajectory();
+  // if (param_.enable_path_smoothing) {
+  //   averageFilterTrajectory(*trajectory_resampled_);
+  // }
+
+  const auto cmd_msg = generateOutputControlCmd();
+
   LateralOutput output;
+  output.control_cmd = cmd_msg;
+  // output.sync_data.is_steer_converged = calcIsSteerConverged(cmd_msg);
+
+  // calculate predicted trajectory with iterative calculation
+  // const auto predicted_trajectory = generatePredictedTrajectory();
+  // if (!predicted_trajectory) {
+  //   RCLCPP_ERROR(logger_, "Failed to generate predicted trajectory.");
+  // } else {
+  //   pub_predicted_trajectory_->publish(*predicted_trajectory);
+  // }
   return output;
 }
 

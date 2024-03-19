@@ -20,12 +20,16 @@
 
 #include "rclcpp/rclcpp.hpp"
 #include "trajectory_follower_base/lateral_controller_base.hpp"
+#include "geometry_msgs/msg/pose_stamped.hpp"
 
 #include "lqr_lateral_controller/visibility_control.hpp"
 
 using autoware::motion::control::trajectory_follower::InputData;
 using autoware::motion::control::trajectory_follower::LateralControllerBase;
 using autoware::motion::control::trajectory_follower::LateralOutput;
+using autoware_auto_control_msgs::msg::AckermannLateralCommand;
+using autoware_auto_planning_msgs::msg::Trajectory;
+using autoware_auto_planning_msgs::msg::TrajectoryPoint;
 
 namespace lqr_lateral_controller
 {
@@ -33,15 +37,31 @@ namespace lqr_lateral_controller
 class LQR_LATERAL_CONTROLLER_PUBLIC LqrLateralController : public LateralControllerBase
 {
 public:
-  LqrLateralController();
+  /// \param node Reference to the node used only for the component and parameter initialization.
+  explicit LqrLateralController(rclcpp::Node & node);
+  // LqrLateralController();
   ~LqrLateralController() = default;
 
-  // rclcpp::Logger m_logger = rclcpp::get_logger("lqr_lateral_controller_logger");  // ROS logger used for debug logging.
   
   int64_t foo(int64_t bar) const;
 private:
-  bool isReady([[maybe_unused]]const InputData & input_data) override;
-  LateralOutput run([[maybe_unused]] InputData const & input_data) override;
+  bool isReady([[maybe_unused]]const InputData & input_data) override;  // From base class
+  LateralOutput run(InputData const & input_data) override;  // From base class
+
+  // // Predicted Trajectory publish
+  // rclcpp::Publisher<autoware_auto_planning_msgs::msg::Trajectory>::SharedPtr pub_predicted_trajectory_;
+  
+  rclcpp::Logger m_logger = rclcpp::get_logger("lqr_lateral_controller_logger");  // ROS logger used for debug logging.
+  
+  rclcpp::Clock::SharedPtr clock_;
+  geometry_msgs::msg::Pose current_pose_;
+  autoware_auto_planning_msgs::msg::Trajectory trajectory_;
+  // autoware_auto_planning_msgs::msg::Trajectory::SharedPtr trajectory_resampled_;
+  nav_msgs::msg::Odometry current_odometry_;
+  autoware_auto_vehicle_msgs::msg::SteeringReport current_steering_;
+  // boost::optional<AckermannLateralCommand> prev_cmd_;
+
+  AckermannLateralCommand generateOutputControlCmd();
 };
 
 }  // namespace lqr_lateral_controller
