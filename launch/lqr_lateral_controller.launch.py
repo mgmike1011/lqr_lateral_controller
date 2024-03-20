@@ -25,7 +25,7 @@ def launch_setup(context, *args, **kwargs):
     param_path = LaunchConfiguration('lqr_lateral_controller_param_file').perform(context)
     if not param_path:
         param_path = PathJoinSubstitution(
-            [FindPackageShare('lqr_lateral_controller'), 'config', 'lqr_lateral_controller.param.yaml']
+            [FindPackageShare('lqr_lateral_controller'), 'config', 'lqr.param.yaml']
         ).perform(context)
 
     lqr_lateral_controller_node = Node(
