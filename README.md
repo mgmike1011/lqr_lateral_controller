@@ -13,6 +13,10 @@ git clone https://github.com/mgmike1011/lqr_lateral_controller.git
 cd ~/autoware
 colcon build --packages-select lqr_lateral_controller --symlink-install
 ```
+```bash
+colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release \
+-DCMAKE_EXPORT_COMPILE_COMMANDS=On --packages-up-to f1tenth_launch
+```
 <!-- ```bash
 rosdep install --from-paths src --ignore-src -y
 colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=On --packages-up-to lqr_lateral_controller
