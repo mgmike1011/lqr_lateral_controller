@@ -42,20 +42,20 @@ struct Param
   double max_steering_angle;  // [rad]
 
   // Algorithm Parameters
-  double ld_velocity_ratio;
-  double ld_lateral_error_ratio;
-  double ld_curvature_ratio;
-  double min_lookahead_distance;
-  double max_lookahead_distance;
-  double reverse_min_lookahead_distance;  // min_lookahead_distance in reverse gear
-  double converged_steer_rad_;
-  double prediction_ds;
-  double prediction_distance_length;  // Total distance of prediction trajectory
-  double resampling_ds;
-  double curvature_calculation_distance;
-  double long_ld_lateral_error_threshold;
-  bool enable_path_smoothing;
-  int path_filter_moving_ave_num;
+  double ld_velocity_ratio;  // TDOO: Declare more parameters
+  // double ld_lateral_error_ratio;
+  // double ld_curvature_ratio;
+  // double min_lookahead_distance;
+  // double max_lookahead_distance;
+  // double reverse_min_lookahead_distance;  // min_lookahead_distance in reverse gear
+  // double converged_steer_rad_;
+  // double prediction_ds;
+  // double prediction_distance_length;  // Total distance of prediction trajectory
+  // double resampling_ds;
+  // double curvature_calculation_distance;
+  // double long_ld_lateral_error_threshold;
+  // bool enable_path_smoothing;
+  // int path_filter_moving_ave_num;
 };
 
 class LQR_LATERAL_CONTROLLER_PUBLIC LqrLateralController : public LateralControllerBase
@@ -71,24 +71,22 @@ private:
   bool isReady([[maybe_unused]]const InputData & input_data) override;  // From base class
   LateralOutput run(InputData const & input_data) override;  // From base class
 
-  rclcpp::Logger logger_ = rclcpp::get_logger("lqr_lateral_controller_logger");  // ROS logger used for debug logging.
-  
+  // Logger and clock
   rclcpp::Clock::SharedPtr clock_;
+  rclcpp::Logger logger_;
+  
   geometry_msgs::msg::Pose current_pose_;
   autoware_auto_planning_msgs::msg::Trajectory trajectory_;
-  // autoware_auto_planning_msgs::msg::Trajectory::SharedPtr trajectory_resampled_;
   nav_msgs::msg::Odometry current_odometry_;
   autoware_auto_vehicle_msgs::msg::SteeringReport current_steering_;
-  // boost::optional<AckermannLateralCommand> prev_cmd_;
 
-  AckermannLateralCommand generateOutputControlCmd();
+  AckermannLateralCommand generateOutputControlCmd(const double& target_curvature);
 
-  // Parameter
+  // Parameters
   Param param_{};
 
   // Algorithm
   std::unique_ptr<LQR> lqr_;
-  // lqr::LQR lqr_;
 };
 
 }  // namespace lqr_lateral_controller

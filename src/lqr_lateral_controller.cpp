@@ -22,7 +22,8 @@ namespace lqr_lateral_controller
 {
 
 LqrLateralController::LqrLateralController(rclcpp::Node & node)
-: clock_(node.get_clock())
+: clock_(node.get_clock()), 
+logger_(node.get_logger().get_child("lqr_lateral_controller_logger"))
 {
   RCLCPP_ERROR(logger_, "LQR Lateral controller initialization.");  // TODO: Change ERROR to INFO
   // Controller
@@ -32,17 +33,21 @@ LqrLateralController::LqrLateralController(rclcpp::Node & node)
   const auto vehicle_info = vehicle_info_util::VehicleInfoUtil(node).getVehicleInfo();
   param_.wheel_base = vehicle_info.wheel_base_m;
   param_.max_steering_angle = vehicle_info.max_steer_angle_rad;
+  
+  // Algorithm Parameters
+  param_.ld_velocity_ratio = node.declare_parameter<double>("ld_velocity_ratio", 0.0);  // TODO: Declare more parameters
 
   RCLCPP_ERROR(logger_, "LQR Lateral controller initialized.");  // TODO: Change ERROR to INFO
 }
 
-AckermannLateralCommand LqrLateralController::generateOutputControlCmd()
+AckermannLateralCommand LqrLateralController::generateOutputControlCmd(const double& target_curvature)
 {
-  AckermannLateralCommand output_cmd;
-  output_cmd.stamp = clock_->now();
-  output_cmd.steering_tire_angle = -1.0;
+  const double tmp_steering = target_curvature;  // TODO: Change for function - convertCurvatureToSteeringAngle -> atan(param_.wheel_base, target_curvature)
+  AckermannLateralCommand cmd;
+  cmd.stamp = clock_->now();
+  cmd.steering_tire_angle = static_cast<float>(std::min(std::max(tmp_steering, -param_.max_steering_angle), param_.max_steering_angle));
 
-  return output_cmd;
+  return cmd;
 }
 
 bool LqrLateralController::isReady([[maybe_unused]] const InputData & input_data)
@@ -56,14 +61,13 @@ LateralOutput LqrLateralController::run(const InputData & input_data)
   trajectory_ = input_data.current_trajectory;
   current_odometry_ = input_data.current_odometry;
   current_steering_ = input_data.current_steering;
-  RCLCPP_ERROR(logger_, "LQR Lateral controller::run.");
-  // std::cout << "CONTROL!" << std::endl;
+  RCLCPP_ERROR(logger_, "LQR Lateral controller::run.");  // TODO: Delete logging
   // setResampledTrajectory();
   // if (param_.enable_path_smoothing) {
   //   averageFilterTrajectory(*trajectory_resampled_);
   // }
 
-  const auto cmd_msg = generateOutputControlCmd();
+  const auto cmd_msg = generateOutputControlCmd(0.5);
 
   LateralOutput output;
   output.control_cmd = cmd_msg;
