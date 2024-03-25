@@ -20,10 +20,9 @@ namespace lqr_lateral_controller
 LqrLateralControllerNode::LqrLateralControllerNode(const rclcpp::NodeOptions & options)
 :  Node("lqr_lateral_controller", options)
 {
-  // lqr_lateral_controller_ = std::make_unique<lqr_lateral_controller::LqrLateralController>(*nullptr);
-  
-  param_name_ = this->declare_parameter("param_name", 456);
-  lqr_lateral_controller_->foo(param_name_);
+  //
+  //  NOT USED - launch from autoware
+  //
 }
 
 }  // namespace lqr_lateral_controller

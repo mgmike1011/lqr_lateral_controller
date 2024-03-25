@@ -14,6 +14,8 @@
 
 #include "lqr_lateral_controller/lqr_lateral_controller.hpp"
 
+#include <vehicle_info_util/vehicle_info_util.hpp>
+
 #include <iostream>
 
 namespace lqr_lateral_controller
@@ -22,18 +24,23 @@ namespace lqr_lateral_controller
 LqrLateralController::LqrLateralController(rclcpp::Node & node)
 : clock_(node.get_clock())
 {
-  RCLCPP_INFO(m_logger, "LQR Lateral controller initialized.");
-}
-// LqrLateralController::LqrLateralController()
-// {
+  RCLCPP_ERROR(logger_, "LQR Lateral controller initialization.");  // TODO: Change ERROR to INFO
+  // Controller
+  this->lqr_ = std::make_unique<LQR>();
+ 
+  // Vehicle Parameters
+  const auto vehicle_info = vehicle_info_util::VehicleInfoUtil(node).getVehicleInfo();
+  param_.wheel_base = vehicle_info.wheel_base_m;
+  param_.max_steering_angle = vehicle_info.max_steer_angle_rad;
 
-// }
+  RCLCPP_ERROR(logger_, "LQR Lateral controller initialized.");  // TODO: Change ERROR to INFO
+}
 
 AckermannLateralCommand LqrLateralController::generateOutputControlCmd()
 {
   AckermannLateralCommand output_cmd;
   output_cmd.stamp = clock_->now();
-  output_cmd.steering_tire_angle = 1.0;
+  output_cmd.steering_tire_angle = -1.0;
 
   return output_cmd;
 }
@@ -49,7 +56,8 @@ LateralOutput LqrLateralController::run(const InputData & input_data)
   trajectory_ = input_data.current_trajectory;
   current_odometry_ = input_data.current_odometry;
   current_steering_ = input_data.current_steering;
-
+  RCLCPP_ERROR(logger_, "LQR Lateral controller::run.");
+  // std::cout << "CONTROL!" << std::endl;
   // setResampledTrajectory();
   // if (param_.enable_path_smoothing) {
   //   averageFilterTrajectory(*trajectory_resampled_);
@@ -71,9 +79,9 @@ LateralOutput LqrLateralController::run(const InputData & input_data)
   return output;
 }
 
-int64_t LqrLateralController::foo(int64_t bar) const
+int64_t LqrLateralController::testObject(int64_t bar) const
 {
-  std::cout << "Hello World, " << bar << std::endl;
+  std::cout << "Hello from LQR lateral controller, " << bar << std::endl;
   return bar;
 }
 

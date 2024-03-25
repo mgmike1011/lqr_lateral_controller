@@ -22,6 +22,7 @@
 #include "trajectory_follower_base/lateral_controller_base.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
 
+#include "lqr_lateral_controller/lqr.hpp"
 #include "lqr_lateral_controller/visibility_control.hpp"
 
 using autoware::motion::control::trajectory_follower::InputData;
@@ -34,24 +35,43 @@ using autoware_auto_planning_msgs::msg::TrajectoryPoint;
 namespace lqr_lateral_controller
 {
 
+struct Param
+{
+  // Global Parameters
+  double wheel_base;
+  double max_steering_angle;  // [rad]
+
+  // Algorithm Parameters
+  double ld_velocity_ratio;
+  double ld_lateral_error_ratio;
+  double ld_curvature_ratio;
+  double min_lookahead_distance;
+  double max_lookahead_distance;
+  double reverse_min_lookahead_distance;  // min_lookahead_distance in reverse gear
+  double converged_steer_rad_;
+  double prediction_ds;
+  double prediction_distance_length;  // Total distance of prediction trajectory
+  double resampling_ds;
+  double curvature_calculation_distance;
+  double long_ld_lateral_error_threshold;
+  bool enable_path_smoothing;
+  int path_filter_moving_ave_num;
+};
+
 class LQR_LATERAL_CONTROLLER_PUBLIC LqrLateralController : public LateralControllerBase
 {
 public:
   /// \param node Reference to the node used only for the component and parameter initialization.
   explicit LqrLateralController(rclcpp::Node & node);
-  // LqrLateralController();
   ~LqrLateralController() = default;
 
-  
-  int64_t foo(int64_t bar) const;
+  int64_t testObject(int64_t bar) const;
+
 private:
   bool isReady([[maybe_unused]]const InputData & input_data) override;  // From base class
   LateralOutput run(InputData const & input_data) override;  // From base class
 
-  // // Predicted Trajectory publish
-  // rclcpp::Publisher<autoware_auto_planning_msgs::msg::Trajectory>::SharedPtr pub_predicted_trajectory_;
-  
-  rclcpp::Logger m_logger = rclcpp::get_logger("lqr_lateral_controller_logger");  // ROS logger used for debug logging.
+  rclcpp::Logger logger_ = rclcpp::get_logger("lqr_lateral_controller_logger");  // ROS logger used for debug logging.
   
   rclcpp::Clock::SharedPtr clock_;
   geometry_msgs::msg::Pose current_pose_;
@@ -62,6 +82,13 @@ private:
   // boost::optional<AckermannLateralCommand> prev_cmd_;
 
   AckermannLateralCommand generateOutputControlCmd();
+
+  // Parameter
+  Param param_{};
+
+  // Algorithm
+  std::unique_ptr<LQR> lqr_;
+  // lqr::LQR lqr_;
 };
 
 }  // namespace lqr_lateral_controller
