@@ -17,6 +17,11 @@ colcon build --packages-select lqr_lateral_controller --symlink-install
 colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release \
 -DCMAKE_EXPORT_COMPILE_COMMANDS=On --packages-up-to f1tenth_launch
 ```
+## Content
+* `lqr.cpp/.hpp` - controller logic implementation,
+* `lqr_lateral_controller.cpp/.hpp` - autoware interface for running algorithm, data receive and send,
+* `lqr_lateral_controller_node.cpp/.hpp` - NOT USED (TBD)
+* `lqr_lateral_controller.launch.py` - NOT USED (TBD)
 <!-- ```bash
 rosdep install --from-paths src --ignore-src -y
 colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=On --packages-up-to lqr_lateral_controller
@@ -27,11 +32,11 @@ colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_E
 <!-- Things to consider:
     - Launching package. 
     - Exposed API (example service/action call. -->
-1. 
+<!-- 1. 
 
 ```bash
 ros2 launch lqr_lateral_controller lqr_lateral_controller.launch.py
-```
+``` -->
 
 <!-- ## API -->
 <!-- Required -->
