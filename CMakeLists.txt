@@ -8,6 +8,8 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
   include/lqr_lateral_controller/lqr_lateral_controller.hpp
   include/lqr_lateral_controller/visibility_control.hpp
   src/lqr_lateral_controller.cpp
+  include/lqr_lateral_controller/lqr.hpp
+  src/lqr.cpp
 )
 
 ament_auto_add_library(${PROJECT_NAME}_node SHARED
