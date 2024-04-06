@@ -30,6 +30,8 @@ public:
   explicit LqrLateralControllerNode(const rclcpp::NodeOptions & options);
 
 private:
+
+  std::shared_ptr<lqr_lateral_controller::LqrLateralController> lqr;
   //
   //  NOT USED - launch from autoware
   //

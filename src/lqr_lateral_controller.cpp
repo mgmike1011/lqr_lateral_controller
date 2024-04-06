@@ -27,7 +27,7 @@ logger_(node.get_logger().get_child("lqr_lateral_controller_logger"))
 {
   RCLCPP_ERROR(logger_, "LQR Lateral controller initialization.");  // TODO: Change ERROR to INFO
   // Controller
-  this->lqr_ = std::make_unique<LQR>();
+  // this->lqr_ = std::make_unique<LQR>();
  
   // Vehicle Parameters
   const auto vehicle_info = vehicle_info_util::VehicleInfoUtil(node).getVehicleInfo();
@@ -43,6 +43,8 @@ logger_(node.get_logger().get_child("lqr_lateral_controller_logger"))
 AckermannLateralCommand LqrLateralController::generateOutputControlCmd(const double& target_curvature)
 {
   const double tmp_steering = target_curvature;  // TODO: Change for function - convertCurvatureToSteeringAngle -> atan(param_.wheel_base, target_curvature)
+ 
+ 
   AckermannLateralCommand cmd;
   cmd.stamp = clock_->now();
   cmd.steering_tire_angle = static_cast<float>(std::min(std::max(tmp_steering, -param_.max_steering_angle), param_.max_steering_angle));
@@ -67,6 +69,10 @@ LateralOutput LqrLateralController::run(const InputData & input_data)
   //   averageFilterTrajectory(*trajectory_resampled_);
   // }
 
+ // ref - val
+  Eigen::Vector4d state =Eigen::Vector4d(0.1-0.5,0.05-0.1,1-5,0.05-0.1);
+  lqr_->calculate_control_signal(5.0,0.1,state); 
+
   const auto cmd_msg = generateOutputControlCmd(0.5);
 
   LateralOutput output;
@@ -83,10 +89,17 @@ LateralOutput LqrLateralController::run(const InputData & input_data)
   return output;
 }
 
-int64_t LqrLateralController::testObject(int64_t bar) const
+void LqrLateralController::testObject() const
 {
-  std::cout << "Hello from LQR lateral controller, " << bar << std::endl;
-  return bar;
+  std::cout << "Hello from LQR lateral controller "<< std::endl;
+
+  Eigen::Vector4d state =Eigen::Vector4d(0.1-0.5,0.05-0.1,1-5,0.05-0.1);
+  std::cout<<"test"<<std::endl;
+  auto u = lqr_->calculate_control_signal(5.0,0.1,state); 
+  std::cout<<u<<std::endl;
+
+  
+
 }
 
 }  // namespace lqr_lateral_controller

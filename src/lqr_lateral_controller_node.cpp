@@ -23,6 +23,9 @@ LqrLateralControllerNode::LqrLateralControllerNode(const rclcpp::NodeOptions & o
   //
   //  NOT USED - launch from autoware
   //
+  lqr->testObject();
+
+  std::cout<<"test"<<std::endl;
 }
 
 }  // namespace lqr_lateral_controller

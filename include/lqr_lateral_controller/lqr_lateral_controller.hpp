@@ -65,7 +65,7 @@ public:
   explicit LqrLateralController(rclcpp::Node & node);
   ~LqrLateralController() = default;
 
-  int64_t testObject(int64_t bar) const;
+  void testObject() const;
 
 private:
   bool isReady([[maybe_unused]]const InputData & input_data) override;  // From base class
@@ -86,7 +86,7 @@ private:
   Param param_{};
 
   // Algorithm
-  std::unique_ptr<LQR> lqr_;
+  std::shared_ptr<lqr_::LQR> lqr_;
 };
 
 }  // namespace lqr_lateral_controller
