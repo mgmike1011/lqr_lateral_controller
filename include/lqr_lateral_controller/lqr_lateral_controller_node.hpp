@@ -19,6 +19,9 @@
 #include <rclcpp/rclcpp.hpp>
 
 #include "lqr_lateral_controller/lqr_lateral_controller.hpp"
+#include "lqr_lateral_controller/lqr.hpp"
+#include <Eigen/Dense>
+#include <math.h>
 
 namespace lqr_lateral_controller
 {
@@ -31,7 +34,7 @@ public:
 
 private:
 
-  std::shared_ptr<lqr_lateral_controller::LqrLateralController> lqr;
+  // std::shared_ptr<lqr_lateral_controller::LqrLateralController> lqr_ = std::make_shared<lqr_lateral_controller::LqrLateralController>();
   //
   //  NOT USED - launch from autoware
   //

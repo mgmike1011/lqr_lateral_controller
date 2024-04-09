@@ -17,10 +17,18 @@
 
 #include <cstdint>
 #include <memory>
+#include "tf2/utils.h"
+#include "geometry_msgs/msg/twist_stamped.hpp"
 
 #include "rclcpp/rclcpp.hpp"
 #include "trajectory_follower_base/lateral_controller_base.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
+#include "autoware_auto_planning_msgs/msg/trajectory.hpp"
+#include "autoware_auto_planning_msgs/msg/trajectory_point.hpp"
+// #include "geometry_msgs/msg/twist_with_covariance.hpp"
+// #include <geometry_msgs/msg/quaternion.hpp>
+// #include <tf2/LinearMath/Quaternion.h>
+#include "tf2_geometry_msgs/tf2_geometry_msgs.hpp"
 
 #include "lqr_lateral_controller/lqr.hpp"
 #include "lqr_lateral_controller/visibility_control.hpp"
@@ -76,9 +84,10 @@ private:
   rclcpp::Logger logger_;
   
   geometry_msgs::msg::Pose current_pose_;
-  autoware_auto_planning_msgs::msg::Trajectory trajectory_;
+  autoware_auto_planning_msgs::msg::TrajectoryPoint trajectory_;
   nav_msgs::msg::Odometry current_odometry_;
   autoware_auto_vehicle_msgs::msg::SteeringReport current_steering_;
+  geometry_msgs::msg::TwistWithCovariance current_vel_;
 
   AckermannLateralCommand generateOutputControlCmd(const double& target_curvature);
 
@@ -86,7 +95,8 @@ private:
   Param param_{};
 
   // Algorithm
-  std::shared_ptr<lqr_::LQR> lqr_;
+  std::shared_ptr<lqr_lateral_controller::LQR> lqr = std::make_shared<lqr_lateral_controller::LQR>();
+//;
 };
 
 }  // namespace lqr_lateral_controller

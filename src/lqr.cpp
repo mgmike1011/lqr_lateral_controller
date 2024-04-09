@@ -1,11 +1,13 @@
 #include "lqr_lateral_controller/lqr.hpp"
 
-namespace lqr_
+namespace lqr_lateral_controller
 {
 
 LQR::LQR()
 {
-    RCLCPP_ERROR(logger_, "LQR controller initialization.");
+    std::cout<<"jestem w lqr"<<std::endl;
+    // x_state_=Eigen::Vector4d(0,0,0,0);
+    RCLCPP_INFO(logger_, "LQR controller initialization.");
 }
 
 int64_t LQR::testObject(int64_t bar) const
@@ -86,17 +88,22 @@ Eigen::RowVector4d LQR::get_K(double v_x, double yaw_des_dot){
     return K;
 }
 
-double LQR::calculate_control_signal(double v_x, double yaw_des_dot,Eigen::Vector4d xstate){
+double LQR::calculate_control_signal(double v_x, double yaw_des_dot, Eigen::Vector4d xstate){
 
-    std::cout<<"test"<<std::endl;
+    std::cout<<"test calculate control signal"<<std::endl;
+    std::cout<<xstate(0)<<std::endl;
+    std::cout<<Iz_<<std::endl;
 
     x_state_=xstate;
+    
+    std::cout<<"test za xstate"<<std::endl;
+     std::cout<<x_state_(0)<<std::endl;
 
     Eigen::RowVector4d K=get_K(v_x,yaw_des_dot);
 
     double u = K*x_state_; 
 
-    return u;
+    return u*3.14/180;
 }
 
 

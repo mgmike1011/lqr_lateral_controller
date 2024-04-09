@@ -60,20 +60,26 @@ bool LqrLateralController::isReady([[maybe_unused]] const InputData & input_data
 LateralOutput LqrLateralController::run(const InputData & input_data)
 {
   current_pose_ = input_data.current_odometry.pose.pose;
-  trajectory_ = input_data.current_trajectory;
+  current_vel_ = input_data.current_odometry.twist;
+
+  trajectory_ = input_data.current_trajectory.points[0];
   current_odometry_ = input_data.current_odometry;
   current_steering_ = input_data.current_steering;
-  RCLCPP_ERROR(logger_, "LQR Lateral controller::run.");  // TODO: Delete logging
+  RCLCPP_INFO(logger_, "LQR Lateral controller::run.");  // TODO: Delete logging
   // setResampledTrajectory();
   // if (param_.enable_path_smoothing) {
   //   averageFilterTrajectory(*trajectory_resampled_);
   // }
 
- // ref - val
-  Eigen::Vector4d state =Eigen::Vector4d(0.1-0.5,0.05-0.1,1-5,0.05-0.1);
-  lqr_->calculate_control_signal(5.0,0.1,state); 
 
-  const auto cmd_msg = generateOutputControlCmd(0.5);
+  auto phi = tf2::getYaw(current_odometry_.pose.pose.orientation);//tan(current_vel_.linear.y/current_vel_.linear.x)
+  auto phi_des=tf2::getYaw(trajectory_.pose.orientation);
+
+  Eigen::Vector4d state =Eigen::Vector4d(trajectory_.pose.position.y-current_pose_.position.y,trajectory_.lateral_velocity_mps-current_vel_.twist.linear.y,phi_des-phi,trajectory_.heading_rate_rps-current_vel_.twist.angular.y);
+  double u = lqr->calculate_control_signal(current_vel_.twist.linear.x,trajectory_.heading_rate_rps,state); 
+
+  std::cout<<"control signal"<<u<<std::endl;
+  const auto cmd_msg = generateOutputControlCmd(u);
 
   LateralOutput output;
   output.control_cmd = cmd_msg;
@@ -91,12 +97,12 @@ LateralOutput LqrLateralController::run(const InputData & input_data)
 
 void LqrLateralController::testObject() const
 {
-  std::cout << "Hello from LQR lateral controller "<< std::endl;
+  std::cout << "Hello from LQR lateral controller--- "<< std::endl;
 
-  Eigen::Vector4d state =Eigen::Vector4d(0.1-0.5,0.05-0.1,1-5,0.05-0.1);
-  std::cout<<"test"<<std::endl;
-  auto u = lqr_->calculate_control_signal(5.0,0.1,state); 
-  std::cout<<u<<std::endl;
+  // Eigen::Vector4d state =Eigen::Vector4d(0.1-0.5,0.05-0.1,1-5,0.05-0.1);
+  // std::cout<<"test"<<std::endl;
+  // auto u = lqr_->calculate_control_signal(5.0,0.1,state); 
+  // std::cout<<u<<std::endl;
 
   
 

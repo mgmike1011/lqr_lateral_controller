@@ -10,7 +10,7 @@
 // implemenataion based on: https://ieeexplore.ieee.org/document/9051390
 // LQR version with finite horizon
 
-namespace lqr_
+namespace lqr_lateral_controller
 {
 class LQR
 {
@@ -22,11 +22,11 @@ private:
     const double lf_ = 0.114  ; // [m] front overhang length
     const double lr_ =  0.11 ; // [m] rear overhang length
     const double Iz_ = 0.02623506; // [kg*m^2]
-    const int8_t N_ = 5; //horizon for riccati recursion 
-
-    double R_{};
-    Eigen::Matrix4d  Q_ {};
-    Eigen::Vector4d x_state_{};
+    const int8_t N_ = 20; //horizon for riccati recursion 
+    Eigen::Vector4d x_state_ ;
+    double R_;
+    Eigen::Matrix4d  Q_;
+    // std::shared_ptr<Eigen::Vector4d>  x_state_=std::make_shared<Eigen::Vector4d>(0,0,0,0);
     
     Eigen::Matrix4d get_A(double v_x);
     Eigen::Vector4d get_B();
@@ -39,6 +39,8 @@ private:
 public:
     LQR();
     ~LQR() = default;
+
+    
 
     rclcpp::Logger logger_ = rclcpp::get_logger("lqr");
     int64_t testObject(int64_t bar) const;
