@@ -15,23 +15,26 @@
 #ifndef LQR_LATERAL_CONTROLLER__LQR_LATERAL_CONTROLLER_HPP_
 #define LQR_LATERAL_CONTROLLER__LQR_LATERAL_CONTROLLER_HPP_
 
-#include <cstdint>
-#include <memory>
-#include "tf2/utils.h"
-#include "geometry_msgs/msg/twist_stamped.hpp"
-
 #include "rclcpp/rclcpp.hpp"
+#include "tf2/utils.h"
 #include "trajectory_follower_base/lateral_controller_base.hpp"
-#include "geometry_msgs/msg/pose_stamped.hpp"
+
 #include "autoware_auto_planning_msgs/msg/trajectory.hpp"
 #include "autoware_auto_planning_msgs/msg/trajectory_point.hpp"
-// #include "geometry_msgs/msg/twist_with_covariance.hpp"
-// #include <geometry_msgs/msg/quaternion.hpp>
-// #include <tf2/LinearMath/Quaternion.h>
-#include "tf2_geometry_msgs/tf2_geometry_msgs.hpp"
+#include "geometry_msgs/msg/pose_stamped.hpp"
+#include "geometry_msgs/msg/twist_stamped.hpp"
+#include <motion_utils/resample/resample.hpp>
+#include <motion_utils/trajectory/conversion.hpp>
+#include <motion_utils/trajectory/trajectory.hpp>
+
+#include <cstdint>
+#include <memory>
 
 #include "lqr_lateral_controller/lqr.hpp"
 #include "lqr_lateral_controller/visibility_control.hpp"
+#include "tf2_geometry_msgs/tf2_geometry_msgs.hpp"
+
+#include <boost/optional.hpp>
 
 using autoware::motion::control::trajectory_follower::InputData;
 using autoware::motion::control::trajectory_follower::LateralControllerBase;
@@ -43,6 +46,12 @@ using autoware_auto_planning_msgs::msg::TrajectoryPoint;
 namespace lqr_lateral_controller
 {
 
+struct PpOutput
+{
+  double curvature;
+  double velocity;
+};
+
 struct Param
 {
   // Global Parameters
@@ -51,19 +60,19 @@ struct Param
 
   // Algorithm Parameters
   double ld_velocity_ratio;  // TDOO: Declare more parameters
-  // double ld_lateral_error_ratio;
-  // double ld_curvature_ratio;
-  // double min_lookahead_distance;
-  // double max_lookahead_distance;
-  // double reverse_min_lookahead_distance;  // min_lookahead_distance in reverse gear
-  // double converged_steer_rad_;
-  // double prediction_ds;
-  // double prediction_distance_length;  // Total distance of prediction trajectory
-  // double resampling_ds;
-  // double curvature_calculation_distance;
-  // double long_ld_lateral_error_threshold;
-  // bool enable_path_smoothing;
-  // int path_filter_moving_ave_num;
+  double ld_lateral_error_ratio;
+  double ld_curvature_ratio;
+  double min_lookahead_distance;
+  double max_lookahead_distance;
+  double reverse_min_lookahead_distance;  // min_lookahead_distance in reverse gear
+  double converged_steer_rad_;
+  double prediction_ds;
+  double prediction_distance_length;  // Total distance of prediction trajectory
+  double resampling_ds;
+  double curvature_calculation_distance;
+  double long_ld_lateral_error_threshold;
+  bool enable_path_smoothing;
+  int path_filter_moving_ave_num;
 };
 
 class LQR_LATERAL_CONTROLLER_PUBLIC LqrLateralController : public LateralControllerBase
@@ -76,27 +85,35 @@ public:
   void testObject() const;
 
 private:
-  bool isReady([[maybe_unused]]const InputData & input_data) override;  // From base class
-  LateralOutput run(InputData const & input_data) override;  // From base class
+  bool isReady([[maybe_unused]] const InputData & input_data) override;  // From base class
+  LateralOutput run(InputData const & input_data) override;              // From base class
 
   // Logger and clock
   rclcpp::Clock::SharedPtr clock_;
   rclcpp::Logger logger_;
-  
+
   geometry_msgs::msg::Pose current_pose_;
-  autoware_auto_planning_msgs::msg::TrajectoryPoint trajectory_;
-  nav_msgs::msg::Odometry current_odometry_;
-  autoware_auto_vehicle_msgs::msg::SteeringReport current_steering_;
   geometry_msgs::msg::TwistWithCovariance current_vel_;
+  std::vector<TrajectoryPoint> output_tp_array_;
+  autoware_auto_planning_msgs::msg::Trajectory::SharedPtr trajectory_resampled_;
+  autoware_auto_planning_msgs::msg::Trajectory trajectory_;
+  autoware_auto_planning_msgs::msg::TrajectoryPoint trajectory_point_;
+  autoware_auto_vehicle_msgs::msg::SteeringReport current_steering_;
+  nav_msgs::msg::Odometry current_odometry_;
+  boost::optional<AckermannLateralCommand> prev_cmd_;
 
-  AckermannLateralCommand generateOutputControlCmd(const double& target_curvature);
-
+  AckermannLateralCommand generateOutputControlCmd();
+  void setResampledTrajectory();
+  void averageFilterTrajectory(autoware_auto_planning_msgs::msg::Trajectory& u);
+  boost::optional<PpOutput> calcTargetCurvature(bool is_control_output, geometry_msgs::msg::Pose pose);
+  double calcCurvature(const size_t closest_idx);
+  bool calcIsSteerConverged(const AckermannLateralCommand & cmd);
+  AckermannLateralCommand generateCtrlCmdMsg(const double target_curvature);
   // Parameters
   Param param_{};
 
   // Algorithm
-  std::shared_ptr<lqr_lateral_controller::LQR> lqr = std::make_shared<lqr_lateral_controller::LQR>();
-//;
+  std::shared_ptr<lqr_lateral_controller::LQR> lqr_;
 };
 
 }  // namespace lqr_lateral_controller
