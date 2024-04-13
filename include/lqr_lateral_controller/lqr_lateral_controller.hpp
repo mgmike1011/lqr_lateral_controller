@@ -113,7 +113,7 @@ private:
   Param param_{};
 
   // Algorithm
-  std::shared_ptr<lqr_lateral_controller::LQR> lqr_;
+  std::shared_ptr<lqr_lateral_controller::LQR> lqr_ = std::make_shared<lqr_lateral_controller::LQR>();
 };
 
 }  // namespace lqr_lateral_controller

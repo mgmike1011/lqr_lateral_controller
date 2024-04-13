@@ -5,7 +5,7 @@ namespace lqr_lateral_controller
 
 LQR::LQR()
 {
-  std::cout << "jestem w lqr" << std::endl;
+  // std::cout << "jestem w lqr" << std::endl;
   RCLCPP_INFO(logger_, "LQR controller initialization.");
 }
 
@@ -15,7 +15,7 @@ int64_t LQR::testObject(int64_t bar) const
   return bar;
 }
 
-Eigen::Matrix4d LQR::get_A(double v_x)
+Eigen::Matrix4d LQR::get_A(const double& v_x)
 {
   Eigen::Matrix4d A;
 
@@ -37,7 +37,7 @@ Eigen::Vector4d LQR::get_B()
   return B;
 }
 
-Eigen::Vector4d LQR::get_C(double v_x, double yaw_des_dot)
+Eigen::Vector4d LQR::get_C(const double& v_x, const double& yaw_des_dot)
 {
   Eigen::Vector4d C;
 
@@ -46,22 +46,22 @@ Eigen::Vector4d LQR::get_C(double v_x, double yaw_des_dot)
 
   return C;
 }
-void LQR::set_Q_(Eigen::Matrix4d C)
+void LQR::set_Q_(const Eigen::Matrix4d& C)
 {
   Q_ = C * C.transpose();
 }
 
-void LQR::set_Q(Eigen::Vector4d gains)
+void LQR::set_Q(const Eigen::Vector4d& gains)
 {
   Q_ = gains.asDiagonal();
 }
 
-void LQR::set_R(double r)
+void LQR::set_R(const double& r)
 {
   R_ = r;
 }
 
-Eigen::RowVector4d LQR::get_K(double v_x, double yaw_des_dot)
+Eigen::RowVector4d LQR::get_K(const double& v_x, const double& yaw_des_dot)
 {
   Eigen::Matrix4d A = get_A(v_x);
   Eigen::Vector4d B = get_B();
@@ -87,16 +87,16 @@ Eigen::RowVector4d LQR::get_K(double v_x, double yaw_des_dot)
   return K;
 }
 
-double LQR::calculate_control_signal(double v_x, double yaw_des_dot, Eigen::Vector4d xstate)
+double LQR::calculate_control_signal(const double& v_x, const double& yaw_des_dot, const Eigen::Vector4d& xstate)
 {
-  std::cout << "test calculate control signal" << std::endl;
-  std::cout << xstate(0) << std::endl;
-  std::cout << Iz_ << std::endl;
+  // std::cout << "test calculate control signal" << std::endl;
+  // std::cout << xstate(0) << std::endl;
+  // std::cout << Iz_ << std::endl;
 
   x_state_ = xstate;
 
-  std::cout << "test za xstate" << std::endl;
-  std::cout << x_state_(0) << std::endl;
+  // std::cout << "test za xstate" << std::endl;
+  // std::cout << x_state_(0) << std::endl;
 
   Eigen::RowVector4d K = get_K(v_x, yaw_des_dot);
 

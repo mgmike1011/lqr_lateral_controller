@@ -20,9 +20,9 @@ public:
   rclcpp::Logger logger_ = rclcpp::get_logger("lqr");
   int64_t testObject(int64_t bar) const;
 
-  void set_Q(Eigen::Vector4d gains);
-  void set_R(double r);
-  double calculate_control_signal(double v_x, double yaw_des_dot, Eigen::Vector4d xstate);
+  void set_Q(const Eigen::Vector4d& gains);
+  void set_R(const double& r);
+  double calculate_control_signal(const double& v_x, const double& yaw_des_dot, const Eigen::Vector4d& xstate);
 
 private:
   const double Calfa_ = 150;  // [-] wheel tire leteral stiffness; for simplicity assumed to be the
@@ -36,11 +36,11 @@ private:
   Eigen::Vector4d x_state_;
   double R_;
   Eigen::Matrix4d Q_;
-  Eigen::Matrix4d get_A(double v_x);
+  Eigen::Matrix4d get_A(const double& v_x);
   Eigen::Vector4d get_B();
-  Eigen::Vector4d get_C(double v_x, double yaw_des_dot);
-  Eigen::RowVector4d get_K(double v_x, double yaw_des_dot);
-  void set_Q_(Eigen::Matrix4d C);
+  Eigen::Vector4d get_C(const double& v_x, const double& yaw_des_dot);
+  Eigen::RowVector4d get_K(const double& v_x, const double& yaw_des_dot);
+  void set_Q_(const Eigen::Matrix4d& C);
 
 
 };

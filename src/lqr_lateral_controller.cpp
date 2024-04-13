@@ -29,15 +29,15 @@ geometry_msgs::msg::Quaternion getQuaternionFromYaw(const double _yaw)
 LqrLateralController::LqrLateralController(rclcpp::Node & node)
 : clock_(node.get_clock()), logger_(node.get_logger().get_child("lqr_lateral_controller_logger"))
 {
-  RCLCPP_ERROR(logger_, "LQR Lateral controller initialization.");  // TODO: Change ERROR to INFO
+  RCLCPP_ERROR(logger_, "1. LQR Lateral controller initialization.");  // TODO: Change ERROR to INFO
   // Controller
-  this->lqr_ = std::make_shared<lqr_lateral_controller::LQR>();
-
+  // this->lqr_ = std::make_shared<lqr_lateral_controller::LQR>();
+  RCLCPP_ERROR(logger_, "2. LQR Lateral controller initialization.");
   // Vehicle Parameters
   const auto vehicle_info = vehicle_info_util::VehicleInfoUtil(node).getVehicleInfo();
   param_.wheel_base = vehicle_info.wheel_base_m;
   param_.max_steering_angle = vehicle_info.max_steer_angle_rad;
-
+  RCLCPP_ERROR(logger_, "3. LQR Lateral controller initialization.");
   // Algorithm Parameters
   param_.ld_velocity_ratio = node.declare_parameter<double>("ld_velocity_ratio", 2.4);  // TODO: Declare more parameters
   param_.resampling_ds = node.declare_parameter<double>("resampling_ds", 0.1);
@@ -88,11 +88,13 @@ AckermannLateralCommand LqrLateralController::generateOutputControlCmd()
 
 bool LqrLateralController::isReady([[maybe_unused]] const InputData & input_data)
 {
+  RCLCPP_ERROR(logger_, "1. isReady.");
   return true;
 }
 
 LateralOutput LqrLateralController::run(const InputData & input_data)
 {
+  RCLCPP_ERROR(logger_, "1. Run.");
   current_pose_ = input_data.current_odometry.pose.pose;
   current_vel_ = input_data.current_odometry.twist;
   trajectory_ = input_data.current_trajectory;
@@ -106,23 +108,23 @@ LateralOutput LqrLateralController::run(const InputData & input_data)
     averageFilterTrajectory(*trajectory_resampled_);
   }
 // --- Od Natalii
-  auto phi = tf2::getYaw(current_odometry_.pose.pose.orientation);  // tan(current_vel_.linear.y/current_vel_.linear.x)
-  auto phi_des = tf2::getYaw(trajectory_point_.pose.orientation);
+  // auto phi = tf2::getYaw(current_odometry_.pose.pose.orientation);  // tan(current_vel_.linear.y/current_vel_.linear.x)
+  // auto phi_des = tf2::getYaw(trajectory_point_.pose.orientation);
 
-  Eigen::Vector4d state = Eigen::Vector4d(
-    trajectory_point_.pose.position.y - current_pose_.position.y,
-    trajectory_point_.lateral_velocity_mps - current_vel_.twist.linear.y, phi_des - phi,
-    trajectory_point_.heading_rate_rps - current_vel_.twist.angular.y);
+  // Eigen::Vector4d state = Eigen::Vector4d(
+  //   trajectory_point_.pose.position.y - current_pose_.position.y,
+  //   trajectory_point_.lateral_velocity_mps - current_vel_.twist.linear.y, phi_des - phi,
+  //   trajectory_point_.heading_rate_rps - current_vel_.twist.angular.y);
 
-  double u = lqr_->calculate_control_signal(current_vel_.twist.linear.x, trajectory_point_.heading_rate_rps, state);
-  if (isnan(u)) 
-  {
-    RCLCPP_ERROR(logger_, "Control u is nan: %f. Change to 0.0.", u);  // TODO: Change tform ERROR TO INFO
-    u = 0.0;
-  }
+  // double u = lqr_->calculate_control_signal(current_vel_.twist.linear.x, trajectory_point_.heading_rate_rps, state);
+  // if (isnan(u)) 
+  // {
+  //   RCLCPP_ERROR(logger_, "Control u is nan: %f. Change to 0.0.", u);  // TODO: Change tform ERROR TO INFO
+  //   u = 0.0;
+  // }
 
-  RCLCPP_ERROR(logger_, "Control: %f", u);  // TODO: Delete logging
-  // std::cout << "control signal" << u << std::endl;
+  // RCLCPP_ERROR(logger_, "Control: %f", u);  // TODO: Delete logging
+  // // std::cout << "control signal" << u << std::endl;
   // --------------------------------
   const auto cmd_msg = generateOutputControlCmd();
 
@@ -308,40 +310,58 @@ boost::optional<PpOutput> LqrLateralController::calcTargetCurvature(bool is_cont
 
   // calculate the lateral error
 
-  const double lateral_error = motion_utils::calcLateralOffset(trajectory_resampled_->points, pose.position);
+  // const double lateral_error = motion_utils::calcLateralOffset(trajectory_resampled_->points, pose.position);
 
   // calculate the current curvature
 
-  const double current_curvature = calcCurvature(*closest_idx_result);
+  // const double current_curvature = calcCurvature(*closest_idx_result);
 
   // Calculate lookahead distance
 
-  const bool is_reverse = (target_vel < 0);
-  const double min_lookahead_distance = is_reverse ? param_.reverse_min_lookahead_distance : param_.min_lookahead_distance;
-  double lookahead_distance = min_lookahead_distance;
-  if (is_control_output) 
+  // const bool is_reverse = (target_vel < 0);
+  // const double min_lookahead_distance = is_reverse ? param_.reverse_min_lookahead_distance : param_.min_lookahead_distance;
+  // double lookahead_distance = min_lookahead_distance;
+  // if (is_control_output) 
+  // {
+  //   lookahead_distance = calcLookaheadDistance(lateral_error, current_curvature, current_odometry_.twist.twist.linear.x, min_lookahead_distance, is_control_output);
+  // }
+  // else
+  // {
+  //   lookahead_distance = calcLookaheadDistance(lateral_error, current_curvature, target_vel, min_lookahead_distance, is_control_output);
+  // }
+// ---------------
+  // // Set PurePursuit data
+  // pure_pursuit_->setCurrentPose(pose);  // TODO:
+  // pure_pursuit_->setWaypoints(planning_utils::extractPoses(*trajectory_resampled_)); //TODO: 
+  // pure_pursuit_->setLookaheadDistance(lookahead_distance); // TODO:
+
+  // // Run PurePursuit
+  // const auto pure_pursuit_result = pure_pursuit_->run();  // TODO:
+  // if (!pure_pursuit_result.first)  // TODO:
+  // {
+  //   return {};
+  // }
+  auto phi = tf2::getYaw(current_odometry_.pose.pose.orientation);  // tan(current_vel_.linear.y/current_vel_.linear.x)
+  auto phi_des = tf2::getYaw(trajectory_point_.pose.orientation);
+
+  Eigen::Vector4d state = Eigen::Vector4d(
+    trajectory_point_.pose.position.y - current_pose_.position.y,
+    trajectory_point_.lateral_velocity_mps - current_vel_.twist.linear.y, 
+    phi_des - phi,
+    trajectory_point_.heading_rate_rps - current_vel_.twist.angular.y);
+
+  double u = lqr_->calculate_control_signal(current_vel_.twist.linear.x, trajectory_point_.heading_rate_rps, state);
+  if (isnan(u)) 
   {
-    lookahead_distance = calcLookaheadDistance(lateral_error, current_curvature, current_odometry_.twist.twist.linear.x, min_lookahead_distance, is_control_output);
-  }
-  else
-  {
-    lookahead_distance = calcLookaheadDistance(lateral_error, current_curvature, target_vel, min_lookahead_distance, is_control_output);
+    RCLCPP_ERROR(logger_, "Control u is nan: %f. Change to 0.0.", u);  // TODO: Change tform ERROR TO INFO
+    u = 0.0;
   }
 
-  // Set PurePursuit data
-  pure_pursuit_->setCurrentPose(pose);  // TODO:
-  pure_pursuit_->setWaypoints(planning_utils::extractPoses(*trajectory_resampled_)); //TODO: 
-  pure_pursuit_->setLookaheadDistance(lookahead_distance); // TODO:
-
-  // Run PurePursuit
-  const auto pure_pursuit_result = pure_pursuit_->run();  // TODO:
-  if (!pure_pursuit_result.first)  // TODO:
-  {
-    return {};
-  }
-
-  const auto kappa = pure_pursuit_result.second;  // TODO:
-
+  RCLCPP_ERROR(logger_, "Control: %f", u);  // TODO: Delete logging
+  // std::cout << "control signal" << u << std::endl;
+// ------------------
+  // const auto kappa = pure_pursuit_result.second;  // TODO:
+const auto kappa = u;
   // // Set debug data
   // if (is_control_output) 
   // {
