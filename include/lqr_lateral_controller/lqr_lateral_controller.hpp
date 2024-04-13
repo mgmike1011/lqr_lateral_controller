@@ -43,6 +43,8 @@ using autoware_auto_planning_msgs::msg::TrajectoryPoint;
 namespace lqr_lateral_controller
 {
 
+
+
 struct Param
 {
   // Global Parameters
@@ -89,10 +91,18 @@ private:
   autoware_auto_vehicle_msgs::msg::SteeringReport current_steering_;
   geometry_msgs::msg::TwistWithCovariance current_vel_;
 
+  autoware_auto_planning_msgs::msg::TrajectoryPoint trajectory_ref_;
+
   AckermannLateralCommand generateOutputControlCmd(const double& target_curvature);
+
+  rclcpp::Subscription<autoware_auto_planning_msgs::msg::Trajectory>::SharedPtr  subscription_;
+  void get_ref_trajectory(const autoware_auto_planning_msgs::msg::Trajectory::SharedPtr  msg );
+
+  
 
   // Parameters
   Param param_{};
+
 
   // Algorithm
   std::shared_ptr<lqr_lateral_controller::LQR> lqr = std::make_shared<lqr_lateral_controller::LQR>();

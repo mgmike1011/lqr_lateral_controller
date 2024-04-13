@@ -5,6 +5,7 @@
 #include <Eigen/Core>
 #include <Eigen/Dense>
 #include <math.h>
+#include "rclcpp/rclcpp.hpp"
 
 
 // implemenataion based on: https://ieeexplore.ieee.org/document/9051390
@@ -22,23 +23,29 @@ private:
     const double lf_ = 0.114  ; // [m] front overhang length
     const double lr_ =  0.11 ; // [m] rear overhang length
     const double Iz_ = 0.02623506; // [kg*m^2]
-    const int8_t N_ = 20; //horizon for riccati recursion 
-    Eigen::Vector4d x_state_ ;
-    double R_;
-    Eigen::Matrix4d  Q_;
+    const int8_t N_ = 2; //horizon for riccati recursion 
+
+    double R_ {};
+    Eigen::Matrix4d  Q_ {};
     // std::shared_ptr<Eigen::Vector4d>  x_state_=std::make_shared<Eigen::Vector4d>(0,0,0,0);
     
     Eigen::Matrix4d get_A(double v_x);
     Eigen::Vector4d get_B();
     Eigen::Vector4d get_C(double v_x,double yaw_des_dot);
-    Eigen::RowVector4d get_K(double v_x,double yaw_des_dot);
+    Eigen::RowVector4d get_K(double v_x);
     void set_Q_(Eigen::Matrix4d C);
+    // rclcpp::Logger logger_lqr;
 
     
 
 public:
     LQR();
     ~LQR() = default;
+
+    Eigen::Vector4d x_state_ {} ;
+    Eigen::RowVector4d K_{};
+
+
 
     
 
@@ -47,7 +54,7 @@ public:
 
     void set_Q(Eigen::Vector4d gains);
     void set_R(double r);
-    double calculate_control_signal(double v_x, double yaw_des_dot,Eigen::Vector4d xstate);
+    double calculate_control_signal(double v_x,Eigen::Vector4d xstate);
   
 };
 }
