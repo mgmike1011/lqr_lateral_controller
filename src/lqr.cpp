@@ -52,25 +52,26 @@ void LQR::set_Q_(const Eigen::Matrix4d & C)
   Q_ = C * C.transpose();
 }
 
-void LQR::set_Q(const Eigen::Vector4d& gains)
+void LQR::set_Q(const Eigen::Vector4d & gains)
 {
   Q_ = gains.asDiagonal();
 }
 
-void LQR::set_R(const double& r)
+void LQR::set_R(const double & r)
 {
   R_ = r;
 }
 
-Eigen::RowVector4d LQR::get_K(const double& v_x, const double& yaw_des_dot)
+Eigen::RowVector4d LQR::get_K(const double & v_x)
 {
   Eigen::Matrix4d A = get_A(v_x);
   Eigen::Vector4d B = get_B();
-  Eigen::Vector4d C = get_C(v_x, yaw_des_dot);
-  Eigen::Matrix4d Q_f = C * C.transpose();
+  Eigen::Matrix4d Q_f = Eigen::Matrix4d::Zero();  // C*C.transpose();
+  Q_f.diagonal() << 0.5, 0.5, 0.5, 0.5;
+
   Q_ = Q_f;
   // set_Q_(C);
-  set_R(0.2);
+  set_R(0.5);
 
   Eigen::Matrix4d Pt = Q_;
 
@@ -90,7 +91,7 @@ Eigen::RowVector4d LQR::get_K(const double& v_x, const double& yaw_des_dot)
   return K;
 }
 
-double LQR::calculate_control_signal(const double& v_x, const double& yaw_des_dot, const Eigen::Vector4d& xstate)
+double LQR::calculate_control_signal(const double & v_x, const Eigen::Vector4d & xstate)
 {
   std::cout << "test calculate control signal" << std::endl;
   std::cout << xstate(0) << std::endl;
@@ -101,10 +102,13 @@ double LQR::calculate_control_signal(const double& v_x, const double& yaw_des_do
   std::cout << "test za xstate" << std::endl;
   std::cout << x_state_(0) << std::endl;
 
-  Eigen::RowVector4d K = get_K(v_x, yaw_des_dot);
+  Eigen::RowVector4d K = get_K(v_x);
 
   double u = K * x_state_;
 
+  if (isnan(u)) {
+    return 0.0;
+  }
   return u * 3.14 / 180;
 }
 

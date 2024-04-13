@@ -89,13 +89,14 @@ private:
   autoware_auto_vehicle_msgs::msg::SteeringReport current_steering_;
   geometry_msgs::msg::TwistWithCovariance current_vel_;
 
-  AckermannLateralCommand generateOutputControlCmd(const double& target_curvature);
+  AckermannLateralCommand generateOutputControlCmd(double& target_curvature);
 
   // Parameters
   Param param_{};
 
   // Algorithm
-  std::shared_ptr<lqr_lateral_controller::LQR> lqr = std::make_shared<lqr_lateral_controller::LQR>();
+  std::shared_ptr<lqr_lateral_controller::LQR> lqr;
+  double prev_phi_des_;
 //;
 };
 
