@@ -50,7 +50,8 @@ AckermannLateralCommand LqrLateralController::generateOutputControlCmd(double & 
 
   AckermannLateralCommand cmd;
   cmd.stamp = clock_->now();
-  cmd.steering_tire_angle = static_cast<float>(std::min(std::max(tmp_steering, -param_.max_steering_angle), param_.max_steering_angle));
+  cmd.steering_tire_angle = static_cast<float>(tmp_steering); 
+  // static_cast<float>(std::min(std::max(tmp_steering, -param_.max_steering_angle), param_.max_steering_angle));
 
   return cmd;
 }
@@ -87,7 +88,7 @@ LateralOutput LqrLateralController::run(const InputData & input_data)
   // heading_rate_rps - prędkość kątowa w osi z - yaw
   // v / r prędkość kątowa V - longitudal prędkośc z ref, cos(yaw) - yaw z referencyjnej, promień 0.274
 
-  double u = -1 * lqr->calculate_control_signal(current_vel_.twist.linear.x, state);
+  double u = lqr->calculate_control_signal(current_vel_.twist.linear.x, state);
   
   RCLCPP_ERROR(
     logger_,

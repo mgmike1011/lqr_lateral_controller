@@ -109,7 +109,7 @@ double LQR::calculate_control_signal(const double & v_x, const Eigen::Vector4d &
   if (isnan(u)) {
     return 0.0;
   }
-  return u * 3.14 / 180;
+  return u;// * 3.14 / 180;
 }
 
 }  // namespace lqr_lateral_controller
