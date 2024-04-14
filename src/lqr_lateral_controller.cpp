@@ -39,7 +39,7 @@ LqrLateralController::LqrLateralController(rclcpp::Node & node)
 
   // Algorithm Parameters
   param_.ld_velocity_ratio =
-    node.declare_parameter<double>("ld_velocity_ratio", 0.0);  // TODO: Declare more parameters
+    node.declare_parameter<double>("ld_velocity_ratio", 0.7);  // TODO: Declare more parameters
 
   RCLCPP_ERROR(logger_, "LQR Lateral controller initialized.");  // TODO: Change ERROR to INFO
 }
@@ -79,18 +79,32 @@ LateralOutput LqrLateralController::run(const InputData & input_data)
   auto rps = (phi_des - prev_phi_des_) / 0.01;
   prev_phi_des_ = phi_des;
 
+  // Natala
+  // auto phi_des_rps = trajectory_.longitudinal_velocity_mps / (cos(phi_des) * 0.274);
+  // auto phi_des_rps = trajectory_.longitudinal_velocity_mps/(cos(phi_des-phi)*0.274);
+
+  double x = trajectory_.pose.position.x - current_pose_.position.x;
+  double y = trajectory_.pose.position.y - current_pose_.position.y;
+  double distanc = std::sqrt(x*x+y*y);
+
   Eigen::Vector4d state = Eigen::Vector4d(
-    trajectory_.pose.position.y - current_pose_.position.y,
+    distanc,
     trajectory_.lateral_velocity_mps - current_vel_.twist.linear.y, 
     phi_des - phi,
     rps - current_vel_.twist.angular.z);
+  // Eigen::Vector4d state = Eigen::Vector4d(
+  // trajectory_.pose.position.y - current_pose_.position.y,
+  // trajectory_.lateral_velocity_mps - current_vel_.twist.linear.y, 
+  // phi_des - phi,
+  // phi_des_rps - current_vel_.twist.angular.z);
+
 
   // heading_rate_rps - prędkość kątowa w osi z - yaw
   // v / r prędkość kątowa V - longitudal prędkośc z ref, cos(yaw) - yaw z referencyjnej, promień 0.274
 
   double u = lqr->calculate_control_signal(current_vel_.twist.linear.x, state);
   
-  RCLCPP_ERROR(
+  RCLCPP_INFO(
     logger_,
     "\n --- Run --- \n"
     "- control signal u: %f \n"
@@ -100,8 +114,9 @@ LateralOutput LqrLateralController::run(const InputData & input_data)
     "- innex: %ld \n"
     "- rps: %f \n"
     "- Z: %f \n"
+    "- distanc: %f \n"
     "--- --- ---",
-    u, phi, phi_des, trajectory_.heading_rate_rps, *closest_idx_result, rps, current_vel_.twist.angular.z);
+    u, phi, phi_des, trajectory_.heading_rate_rps, *closest_idx_result, rps, current_vel_.twist.angular.z, distanc);
 
   const auto cmd_msg = generateOutputControlCmd(u);
 
