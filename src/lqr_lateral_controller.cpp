@@ -20,6 +20,7 @@
 #include <vehicle_info_util/vehicle_info_util.hpp>
 
 #include <iostream>
+#include <stdexcept>
 
 namespace lqr_lateral_controller
 {
@@ -28,18 +29,19 @@ LqrLateralController::LqrLateralController(rclcpp::Node & node)
 : clock_(node.get_clock()), logger_(node.get_logger().get_child("lqr_lateral_controller_logger"))
 {
   RCLCPP_ERROR(logger_, "LQR Lateral controller initialization.");  // TODO: Change ERROR to INFO
+
   // Controller
-  this->lqr = std::make_shared<lqr_lateral_controller::LQR>();
-  // Previous heading
+  this->lqr_ = std::make_shared<lqr_lateral_controller::LQR>();
+  // Parameters
   prev_phi_des_ = 0.0;
+  last_nearest_index_ = 0;
   // Vehicle Parameters
   const auto vehicle_info = vehicle_info_util::VehicleInfoUtil(node).getVehicleInfo();
   param_.wheel_base = vehicle_info.wheel_base_m;
   param_.max_steering_angle = vehicle_info.max_steer_angle_rad;
 
   // Algorithm Parameters
-  param_.ld_velocity_ratio =
-    node.declare_parameter<double>("ld_velocity_ratio", 0.0);  // TODO: Declare more parameters
+  param_.converged_steer_rad_ = node.declare_parameter<double>("converged_steer_rad", 0.1);
 
   RCLCPP_ERROR(logger_, "LQR Lateral controller initialized.");  // TODO: Change ERROR to INFO
 }
@@ -50,8 +52,7 @@ AckermannLateralCommand LqrLateralController::generateOutputControlCmd(double & 
 
   AckermannLateralCommand cmd;
   cmd.stamp = clock_->now();
-  cmd.steering_tire_angle = static_cast<float>(tmp_steering); 
-  // static_cast<float>(std::min(std::max(tmp_steering, -param_.max_steering_angle), param_.max_steering_angle));
+  cmd.steering_tire_angle = static_cast<float>(std::min(std::max(tmp_steering, -param_.max_steering_angle), param_.max_steering_angle));
 
   return cmd;
 }
@@ -59,6 +60,11 @@ AckermannLateralCommand LqrLateralController::generateOutputControlCmd(double & 
 bool LqrLateralController::isReady([[maybe_unused]] const InputData & input_data)
 {
   return true;
+}
+
+bool LqrLateralController::calcIsSteerConverged(const AckermannLateralCommand & cmd)
+{
+  return std::abs(cmd.steering_tire_angle - current_steering_.steering_tire_angle) < static_cast<float>(param_.converged_steer_rad_);
 }
 
 LateralOutput LqrLateralController::run(const InputData & input_data)
@@ -70,11 +76,19 @@ LateralOutput LqrLateralController::run(const InputData & input_data)
 
   auto output_tp_array_ = motion_utils::convertToTrajectoryPointArray(input_data.current_trajectory);
   const auto closest_idx_result = motion_utils::findNearestIndex(output_tp_array_, current_pose_, 3.0, M_PI_4);
-  trajectory_ = output_tp_array_.at(*closest_idx_result);
-  
+  try
+  {
+    trajectory_ = output_tp_array_.at(*closest_idx_result);
+    last_nearest_index_ = *closest_idx_result;
+  }
+  catch(const std::out_of_range& e)
+  {
+    RCLCPP_ERROR(logger_, "Found index of trajectory closest point out of range! Exception: %s", e.what());
+    trajectory_ = output_tp_array_.at(last_nearest_index_);
+  }
 
   auto phi = tf2::getYaw(current_odometry_.pose.pose.orientation);
-  auto phi_des = tf2::getYaw(output_tp_array_.at(*closest_idx_result).pose.orientation);
+  auto phi_des = tf2::getYaw(trajectory_.pose.orientation);
 
   auto rps = (phi_des - prev_phi_des_) / 0.01;
   prev_phi_des_ = phi_des;
@@ -85,10 +99,7 @@ LateralOutput LqrLateralController::run(const InputData & input_data)
     phi_des - phi,
     rps - current_vel_.twist.angular.z);
 
-  // heading_rate_rps - prędkość kątowa w osi z - yaw
-  // v / r prędkość kątowa V - longitudal prędkośc z ref, cos(yaw) - yaw z referencyjnej, promień 0.274
-
-  double u = lqr->calculate_control_signal(current_vel_.twist.linear.x, state);
+  double u = lqr_->calculate_control_signal(current_vel_.twist.linear.x, state);
   
   RCLCPP_ERROR(
     logger_,
@@ -101,28 +112,21 @@ LateralOutput LqrLateralController::run(const InputData & input_data)
     "- rps: %f \n"
     "- Z: %f \n"
     "--- --- ---",
-    u, phi, phi_des, trajectory_.heading_rate_rps, *closest_idx_result, rps, current_vel_.twist.angular.z);
+    u, phi, phi_des, trajectory_.heading_rate_rps, *closest_idx_result, rps, current_vel_.twist.angular.z); // TODO: Change from ERROR to INFO/DEBUG
 
   const auto cmd_msg = generateOutputControlCmd(u);
 
   LateralOutput output;
   output.control_cmd = cmd_msg;
   output.sync_data.is_steer_converged = true;
-  // output.sync_data.is_steer_converged = calcIsSteerConverged(cmd_msg);
+  output.sync_data.is_steer_converged = calcIsSteerConverged(cmd_msg);
 
-  // calculate predicted trajectory with iterative calculation
-  // const auto predicted_trajectory = generatePredictedTrajectory();
-  // if (!predicted_trajectory) {
-  //   RCLCPP_ERROR(logger_, "Failed to generate predicted trajectory.");
-  // } else {
-  //   pub_predicted_trajectory_->publish(*predicted_trajectory);
-  // }
   return output;
 }
 
 void LqrLateralController::testObject() const
 {
-  std::cout << "Hello from LQR lateral controller--- " << std::endl;
+  std::cout << "Hello from LQR lateral controller." << std::endl;
 }
 
 }  // namespace lqr_lateral_controller

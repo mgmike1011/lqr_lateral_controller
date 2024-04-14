@@ -17,18 +17,15 @@
 
 #include <cstdint>
 #include <memory>
-#include "tf2/utils.h"
-#include "geometry_msgs/msg/twist_stamped.hpp"
 
 #include "rclcpp/rclcpp.hpp"
 #include "trajectory_follower_base/lateral_controller_base.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
+#include "geometry_msgs/msg/twist_stamped.hpp"
+#include "tf2_geometry_msgs/tf2_geometry_msgs.hpp"
+#include "tf2/utils.h"
 #include "autoware_auto_planning_msgs/msg/trajectory.hpp"
 #include "autoware_auto_planning_msgs/msg/trajectory_point.hpp"
-// #include "geometry_msgs/msg/twist_with_covariance.hpp"
-// #include <geometry_msgs/msg/quaternion.hpp>
-// #include <tf2/LinearMath/Quaternion.h>
-#include "tf2_geometry_msgs/tf2_geometry_msgs.hpp"
 
 #include "lqr_lateral_controller/lqr.hpp"
 #include "lqr_lateral_controller/visibility_control.hpp"
@@ -45,25 +42,10 @@ namespace lqr_lateral_controller
 
 struct Param
 {
-  // Global Parameters
   double wheel_base;
   double max_steering_angle;  // [rad]
+  double converged_steer_rad_;
 
-  // Algorithm Parameters
-  double ld_velocity_ratio;  // TDOO: Declare more parameters
-  // double ld_lateral_error_ratio;
-  // double ld_curvature_ratio;
-  // double min_lookahead_distance;
-  // double max_lookahead_distance;
-  // double reverse_min_lookahead_distance;  // min_lookahead_distance in reverse gear
-  // double converged_steer_rad_;
-  // double prediction_ds;
-  // double prediction_distance_length;  // Total distance of prediction trajectory
-  // double resampling_ds;
-  // double curvature_calculation_distance;
-  // double long_ld_lateral_error_threshold;
-  // bool enable_path_smoothing;
-  // int path_filter_moving_ave_num;
 };
 
 class LQR_LATERAL_CONTROLLER_PUBLIC LqrLateralController : public LateralControllerBase
@@ -83,21 +65,23 @@ private:
   rclcpp::Clock::SharedPtr clock_;
   rclcpp::Logger logger_;
   
+  // Algorithm input data
   geometry_msgs::msg::Pose current_pose_;
   autoware_auto_planning_msgs::msg::TrajectoryPoint trajectory_;
   nav_msgs::msg::Odometry current_odometry_;
   autoware_auto_vehicle_msgs::msg::SteeringReport current_steering_;
   geometry_msgs::msg::TwistWithCovariance current_vel_;
 
-  AckermannLateralCommand generateOutputControlCmd(double& target_curvature);
-
   // Parameters
   Param param_{};
-
-  // Algorithm
-  std::shared_ptr<lqr_lateral_controller::LQR> lqr;
   double prev_phi_des_;
-//;
+  size_t last_nearest_index_;
+  // Algorithm
+  std::shared_ptr<lqr_lateral_controller::LQR> lqr_;
+
+  // Methods
+  AckermannLateralCommand generateOutputControlCmd(double& target_curvature);
+  bool calcIsSteerConverged(const AckermannLateralCommand & cmd);
 };
 
 }  // namespace lqr_lateral_controller
