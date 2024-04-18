@@ -66,7 +66,9 @@ Eigen::RowVector4d LQR::get_K(const double & v_x)
 {
   Eigen::Matrix4d A = get_A(v_x);
   Eigen::Vector4d B = get_B();
+  // Eigen::Vector4d C =get_C(v_x,yaw_des_dot);
   Eigen::Matrix4d Q_f = Eigen::Matrix4d::Zero();  // C*C.transpose();
+  // Eigen::Matrix4d Q_f =  C*C.transpose();
   Q_f.diagonal() << 10.23, 3.56, 6.28, 2.12;
 
   Q_ = Q_f;

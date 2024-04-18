@@ -61,6 +61,35 @@ bool LqrLateralController::isReady([[maybe_unused]] const InputData & input_data
   return true;
 }
 
+void LqrLateralController::interpolateOrientation(const std::vector<TrajectoryPoint> & trajectory_points,
+                                                  const geometry_msgs::msg::Pose & current_pose,
+                                                  std::vector<double> & interpolated_orientations)
+{
+  // Calculate distances to trajectory points
+  std::vector<double> distances;
+  distances.reserve(trajectory_points.size());
+  for (const auto & point : trajectory_points)
+  {
+    double dx = current_pose.position.x - point.pose.position.x;
+    double dy = current_pose.position.y - point.pose.position.y;
+    distances.push_back(std::sqrt(dx * dx + dy * dy));
+  }
+
+  // Find the closest point to the current position
+  auto closest_point_iter = std::min_element(distances.begin(), distances.end());
+  size_t closest_point_index = std::distance(distances.begin(), closest_point_iter);
+
+  // Interpolate orientations for the 30 points "in advance"
+  size_t num_points_ahead = std::min<size_t>(30, trajectory_points.size() - closest_point_index);
+  interpolated_orientations.clear();
+  interpolated_orientations.reserve(num_points_ahead);
+  for (size_t i = 0; i < num_points_ahead; ++i)
+  {
+    size_t idx = closest_point_index + i;
+    interpolated_orientations.push_back(tf2::getYaw(trajectory_points[idx].pose.orientation));
+  }
+}
+
 LateralOutput LqrLateralController::run(const InputData & input_data)
 {
   current_pose_ = input_data.current_odometry.pose.pose;
@@ -79,24 +108,25 @@ LateralOutput LqrLateralController::run(const InputData & input_data)
   auto rps = (phi_des - prev_phi_des_) / 0.01;
   prev_phi_des_ = phi_des;
 
-  // Natala
-  // auto phi_des_rps = trajectory_.longitudinal_velocity_mps / (cos(phi_des) * 0.274);
-  // auto phi_des_rps = trajectory_.longitudinal_velocity_mps/(cos(phi_des-phi)*0.274);
+  // //
+  auto phi_des_rps = (tan(phi_des)*trajectory_.longitudinal_velocity_mps) / 0.274;//3.27; //0.274;
 
   double x = trajectory_.pose.position.x - current_pose_.position.x;
   double y = trajectory_.pose.position.y - current_pose_.position.y;
   double distanc = std::sqrt(x*x+y*y);
 
-  Eigen::Vector4d state = Eigen::Vector4d(
-    distanc,
-    trajectory_.lateral_velocity_mps - current_vel_.twist.linear.y, 
-    phi_des - phi,
-    rps - current_vel_.twist.angular.z);
   // Eigen::Vector4d state = Eigen::Vector4d(
-  // trajectory_.pose.position.y - current_pose_.position.y,
-  // trajectory_.lateral_velocity_mps - current_vel_.twist.linear.y, 
-  // phi_des - phi,
-  // phi_des_rps - current_vel_.twist.angular.z);
+  //   // distanc,
+  //   trajectory_.pose.position.y - current_pose_.position.y,
+  //   trajectory_.lateral_velocity_mps - current_vel_.twist.linear.y, 
+  //   phi_des - phi,
+  //   rps - current_vel_.twist.angular.z);
+
+  Eigen::Vector4d state = Eigen::Vector4d(
+  trajectory_.pose.position.y - current_pose_.position.y,
+  trajectory_.lateral_velocity_mps - current_vel_.twist.linear.y, 
+  phi_des - phi,
+  phi_des_rps - current_vel_.twist.angular.z);
 
 
   // heading_rate_rps - prędkość kątowa w osi z - yaw

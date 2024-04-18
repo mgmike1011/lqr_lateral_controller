@@ -33,6 +33,9 @@
 #include "lqr_lateral_controller/lqr.hpp"
 #include "lqr_lateral_controller/visibility_control.hpp"
 
+#include "../../pure_pursuit/include/pure_pursuit/util/interpolate.hpp"
+
+
 using autoware::motion::control::trajectory_follower::InputData;
 using autoware::motion::control::trajectory_follower::LateralControllerBase;
 using autoware::motion::control::trajectory_follower::LateralOutput;
@@ -78,6 +81,11 @@ public:
 private:
   bool isReady([[maybe_unused]]const InputData & input_data) override;  // From base class
   LateralOutput run(InputData const & input_data) override;  // From base class
+
+  void interpolateOrientation(const std::vector<TrajectoryPoint> & trajectory_points,
+                              const geometry_msgs::msg::Pose & current_pose,
+                              std::vector<double> & interpolated_orientations);
+
 
   // Logger and clock
   rclcpp::Clock::SharedPtr clock_;
