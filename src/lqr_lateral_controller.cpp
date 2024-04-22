@@ -101,19 +101,45 @@ LateralOutput LqrLateralController::run(const InputData & input_data)
   const auto closest_idx_result = motion_utils::findNearestIndex(output_tp_array_, current_pose_, 3.0, M_PI_4);
   trajectory_ = output_tp_array_.at(*closest_idx_result);
   
-
+  // Vehicle orientation
   auto phi = tf2::getYaw(current_odometry_.pose.pose.orientation);
+  // Trajectory orientation
   auto phi_des = tf2::getYaw(output_tp_array_.at(*closest_idx_result).pose.orientation);
 
-  auto rps = (phi_des - prev_phi_des_) / 0.01;
+  auto rps = (phi_des - prev_phi_des_) / 0.03;
   prev_phi_des_ = phi_des;
 
   // //
-  auto phi_des_rps = (tan(phi_des)*trajectory_.longitudinal_velocity_mps) / 0.274;//3.27; //0.274;
+  // double L = 0.274; // Długość pojazdu
+  // double alpha = std::tan(phi_des); // Kąt pochylenia trajektorii (w radianach)
+  // double R = L / (2 * std::sin(alpha)); // Promień krzywizny ścieżki
 
-  double x = trajectory_.pose.position.x - current_pose_.position.x;
-  double y = trajectory_.pose.position.y - current_pose_.position.y;
-  double distanc = std::sqrt(x*x+y*y);
+  // auto phi_des_rps = trajectory_.longitudinal_velocity_mps / R;
+
+  auto phi_des_rps = fmod(((std::tan(phi_des)*trajectory_.longitudinal_velocity_mps) / 0.274),3.14);//3.27; //0.274;
+  // auto phi_des_rps = ((std::tan(phi_des)*trajectory_.longitudinal_velocity_mps) / 0.274);//3.27; //0.274;
+
+
+  // Calculate distance to reference trajectory
+  double distance_to_trajectory = std::sqrt(
+      std::pow(trajectory_.pose.position.x - current_pose_.position.x, 2) +
+      std::pow(trajectory_.pose.position.y - current_pose_.position.y, 2)
+  );
+
+  double lateral_error = trajectory_.pose.position.y - current_pose_.position.y;
+
+  // Log the side of the reference trajectory
+  if (lateral_error > 0) {
+      RCLCPP_INFO(logger_, "Reference trajectory is on the right side of the vehicle.");
+  } else if (lateral_error < 0) {
+      RCLCPP_INFO(logger_, "Reference trajectory is on the left side of the vehicle.");
+  } else {
+      RCLCPP_INFO(logger_, "Reference trajectory is aligned with the vehicle.");
+  }
+
+  // double x = trajectory_.pose.position.x - current_pose_.position.x;
+  // double y = trajectory_.pose.position.y - current_pose_.position.y;
+  // double distanc = std::sqrt(x*x+y*y);
 
   // Eigen::Vector4d state = Eigen::Vector4d(
   //   // distanc,
@@ -133,20 +159,27 @@ LateralOutput LqrLateralController::run(const InputData & input_data)
   // v / r prędkość kątowa V - longitudal prędkośc z ref, cos(yaw) - yaw z referencyjnej, promień 0.274
 
   double u = lqr->calculate_control_signal(current_vel_.twist.linear.x, state);
+  // double max_u = 10; // Set your desired maximum control signal value
+  // double min_u = -10; // Set your desired minimum control signal value
+  // u = std::max(min_u, std::min(max_u, u));
   
   RCLCPP_INFO(
     logger_,
     "\n --- Run --- \n"
     "- control signal u: %f \n"
-    "- phi: %f \n"
-    "- phi_des: %f \n"
-    "- heading_rate_rps: %f \n"
+    "- Vehicle orientation phi: %f \n"
+    "- Trajectory orientation phi_des: %f \n"
     "- innex: %ld \n"
-    "- rps: %f \n"
+    "- phi_des_rps: %f \n"
     "- Z: %f \n"
-    "- distanc: %f \n"
+    "- Distance to Trajectory: %f \n"
+    "- Trajectory y %f \n"
+    "- Vehicle y %f \n"
+    "- Trajectory lateral vel y %f \n"
+    "- Vehicle lateral vel y %f \n"
+    "- Old rps %f \n"
     "--- --- ---",
-    u, phi, phi_des, trajectory_.heading_rate_rps, *closest_idx_result, rps, current_vel_.twist.angular.z, distanc);
+    u, phi, phi_des, *closest_idx_result, phi_des_rps, current_vel_.twist.angular.z, distance_to_trajectory, trajectory_.pose.position.y, current_pose_.position.y, trajectory_.lateral_velocity_mps, current_vel_.twist.linear.y, rps);
 
   const auto cmd_msg = generateOutputControlCmd(u);
 

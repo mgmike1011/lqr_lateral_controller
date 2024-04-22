@@ -15,7 +15,7 @@ namespace lqr_lateral_controller
 class LQR
 {
 private:
-  const double Calfa_ = 89; //150;//63;//150;  // [-] wheel tire leteral stiffness; for simplicity assumed to be the
+  const double Calfa_ = 89; //89;//63;//150;  // [-] wheel tire leteral stiffness; for simplicity assumed to be the
                               // same for front and rear wheels
   // data taken from unity model, scripts and configs
   const double m_ = 7;//5;//5;    //3.958;        // [kg] mass
