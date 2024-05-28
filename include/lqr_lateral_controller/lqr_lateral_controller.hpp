@@ -25,13 +25,27 @@
 #include "geometry_msgs/msg/pose_stamped.hpp"
 #include "autoware_auto_planning_msgs/msg/trajectory.hpp"
 #include "autoware_auto_planning_msgs/msg/trajectory_point.hpp"
+<<<<<<< Updated upstream
 // #include "geometry_msgs/msg/twist_with_covariance.hpp"
 // #include <geometry_msgs/msg/quaternion.hpp>
 // #include <tf2/LinearMath/Quaternion.h>
 #include "tf2_geometry_msgs/tf2_geometry_msgs.hpp"
+=======
+#include <tf2/LinearMath/Matrix3x3.h>
+#include <tf2/LinearMath/Quaternion.h>
+>>>>>>> Stashed changes
 
 #include "lqr_lateral_controller/lqr.hpp"
 #include "lqr_lateral_controller/visibility_control.hpp"
+#include <vector>
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <Eigen/Dense>
+
+// #include <fstream>
+// #include <vector>
+// #include <sstream>
 
 using autoware::motion::control::trajectory_follower::InputData;
 using autoware::motion::control::trajectory_follower::LateralControllerBase;
@@ -80,16 +94,30 @@ public:
 private:
   bool isReady([[maybe_unused]]const InputData & input_data) override;  // From base class
   LateralOutput run(InputData const & input_data) override;  // From base class
+  // std::pair<bool, int32_t> findClosestIdxWithDistAngThr(const std::vector<geometry_msgs::msg::Pose> & poses,
+  // const geometry_msgs::msg::Pose & current_pose, double th_dist, double th_yaw);
+  double normalizeEulerAngle(const double euler);
+
+  // std::vector<geometry_msgs::msg::Pose> extractPoses(
+  // const autoware_auto_planning_msgs::msg::Trajectory & trajectory);
 
   // Logger and clock
   rclcpp::Clock::SharedPtr clock_;
   rclcpp::Logger logger_;
+  // string filename_="debug.txt";
+  // std::ofstream file_;
   
   geometry_msgs::msg::Pose current_pose_;
   autoware_auto_planning_msgs::msg::TrajectoryPoint trajectory_;
   nav_msgs::msg::Odometry current_odometry_;
   autoware_auto_vehicle_msgs::msg::SteeringReport current_steering_;
   geometry_msgs::msg::TwistWithCovariance current_vel_;
+  double last_phi_;
+  double last_time_;
+  // uint8_t i_{};
+  // std::ofstream csv_file_;
+
+
 
   autoware_auto_planning_msgs::msg::TrajectoryPoint trajectory_ref_;
 
@@ -102,6 +130,13 @@ private:
 
   // Parameters
   Param param_{};
+<<<<<<< Updated upstream
+=======
+  // double prev_phi_des_{};
+  size_t last_nearest_index_;
+  // Algorithm
+  std::shared_ptr<lqr_lateral_controller::LQR> lqr_;
+>>>>>>> Stashed changes
 
 
   // Algorithm

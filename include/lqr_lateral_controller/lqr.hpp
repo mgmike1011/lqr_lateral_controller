@@ -16,6 +16,7 @@ namespace lqr_lateral_controller
 class LQR
 {
 private:
+<<<<<<< Updated upstream
 
     const double Calfa_ = 150;  // [-] wheel tire leteral stiffness; for simplicity assumed to be the same for front and rear wheels
     // data taken from unity model, scripts and configs
@@ -37,6 +38,28 @@ private:
     // rclcpp::Logger logger_lqr;
 
     
+=======
+  double Calfa_ {};  // [-] wheel tire leteral stiffness; for simplicity assumed to be the
+                              // same for front and rear wheels
+  // Data taken from unity model, scripts and configs
+  double m_ {};            // [kg] mass
+  double lf_ {};       // [m] front overhang length
+  double lr_ {};        // [m] rear overhang length
+  double Iz_ {};  // [kg*m^2]
+  int16_t N_ {};            // horizon for riccati recursion
+  double R_{};
+  double prev_u_{};
+  double tc_{}; 
+
+  Eigen::Vector4d x_state_;
+  Eigen::Matrix4d Q_ = {};
+
+  Eigen::Matrix4d get_A(const double & v_x);
+  Eigen::Vector4d get_B();
+  Eigen::Vector4d get_C(const double & v_x, const double & yaw_des_dot);
+  Eigen::RowVector4d get_K(const double & v_x,const double & yaw_des_dot);
+  void set_Q_(const Eigen::Matrix4d & C);
+>>>>>>> Stashed changes
 
 public:
     LQR();
@@ -52,10 +75,16 @@ public:
     rclcpp::Logger logger_ = rclcpp::get_logger("lqr");
     int64_t testObject(int64_t bar) const;
 
+<<<<<<< Updated upstream
     void set_Q(Eigen::Vector4d gains);
     void set_R(double r);
     double calculate_control_signal(double v_x,Eigen::Vector4d xstate);
   
+=======
+  void set_Q(const Eigen::Vector4d & gains);
+  void set_R(const double & r);
+  double calculate_control_signal(const double & v_x, const double & yaw_des_dot,const Eigen::Vector4d & xstate);
+>>>>>>> Stashed changes
 };
 }
 #endif // LQR_HPP_
