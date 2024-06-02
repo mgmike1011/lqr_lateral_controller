@@ -34,7 +34,15 @@ LqrLateralController::LqrLateralController(rclcpp::Node & node)
   this->lqr_ = std::make_shared<lqr_lateral_controller::LQR>();
   // Parameters
   prev_phi_des_ = 0.0;
+  time_prev_=0.0;
   last_nearest_index_ = 0;
+  y_des_prev_ = 0.0;
+  y_prev_ = 0.0;
+  u_prev_ = 0.0;
+  curvature_= 0.0;
+  e_yLeI_ = 0.0;
+  y_dot_des = 0.0;
+  y_dot = 0.0;
   // Vehicle Parameters
   const auto vehicle_info = vehicle_info_util::VehicleInfoUtil(node).getVehicleInfo();
   param_.wheel_base = vehicle_info.wheel_base_m;
@@ -75,10 +83,35 @@ LateralOutput LqrLateralController::run(const InputData & input_data)
   current_steering_ = input_data.current_steering;
 
   auto output_tp_array_ = motion_utils::convertToTrajectoryPointArray(input_data.current_trajectory);
-  const auto closest_idx_result = motion_utils::findNearestIndex(output_tp_array_, current_pose_, 3.0, M_PI_4);
+  const auto closest_idx_result = motion_utils::findNearestIndex(output_tp_array_, current_pose_, 10.0, M_PI);
+
   try
   {
     trajectory_ = output_tp_array_.at(*closest_idx_result);
+    if((last_nearest_index_>0) && (*closest_idx_result != last_nearest_index_)){
+      // current_curvature = tier4_autoware_utils::calcCurvature(
+      //   tier4_autoware_utils::getPoint(output_tp_array_.at(last_nearest_index_)),
+      //   tier4_autoware_utils::getPoint(output_tp_array_.at(*closest_idx_result)),
+      //   tier4_autoware_utils::getPoint(output_tp_array_.at(*closest_idx_result +1)));
+    auto p1 = tier4_autoware_utils::getPoint(output_tp_array_.at(last_nearest_index_));
+    auto p2 = tier4_autoware_utils::getPoint(output_tp_array_.at(*closest_idx_result));
+    auto p3 = tier4_autoware_utils::getPoint(output_tp_array_.at(*closest_idx_result +1));
+
+    const double denominator =
+    tier4_autoware_utils::calcDistance2d(p1, p2) * tier4_autoware_utils::calcDistance2d(p2, p3) * tier4_autoware_utils::calcDistance2d(p3, p1);
+
+    if (std::fabs(denominator) < 1e-10){
+
+      curvature_=curvature_;
+
+      }else{
+    curvature_ = 2.0 * ((p2.x - p1.x) * (p3.y - p1.y) - (p2.y - p1.y) * (p3.x - p1.x)) / denominator;
+    
+    }
+
+    }
+
+
     last_nearest_index_ = *closest_idx_result;
   }
   catch(const std::out_of_range& e)
@@ -87,20 +120,74 @@ LateralOutput LqrLateralController::run(const InputData & input_data)
     trajectory_ = output_tp_array_.at(last_nearest_index_);
   }
 
+  rclcpp::Time timestamp = input_data.current_trajectory.header.stamp;
+  double time = timestamp.seconds() +timestamp.nanoseconds()/1e9;
+  double tp = time-time_prev_;
+  time_prev_ = time;
+
   auto phi = tf2::getYaw(current_odometry_.pose.pose.orientation);
   auto phi_des = tf2::getYaw(trajectory_.pose.orientation);
 
-  auto rps = (phi_des - prev_phi_des_) / 0.01;
-  prev_phi_des_ = phi_des;
+  // if((phi_des>2.8)&& (phi<0)){
+  //   double val = M_PI- abs(phi);
+  //   phi = M_PI + abs(val); 
+  // }
 
-  Eigen::Vector4d state = Eigen::Vector4d(
-    trajectory_.pose.position.y - current_pose_.position.y,
-    trajectory_.lateral_velocity_mps - current_vel_.twist.linear.y, 
-    phi_des - phi,
-    rps - current_vel_.twist.angular.z);
+  // if((phi_des<0.0)&& (phi>2.8)){
+  //   double val = M_PI-phi;
+  //   phi = -M_PI - val; 
+  // }
 
-  double u = lqr_->calculate_control_signal(current_vel_.twist.linear.x, state);
+
+
+  double vx =  trajectory_.longitudinal_velocity_mps;
+
+  double R = 0.0;
+  if(curvature_!=0.0){
+    R = 1/curvature_;
+  }
+
+  double phi_des_rps = vx/R;
+
+  double lf_ = 0.114;       // [m] front overhang length
+  double lr_ = 0.11;  
+  double delta_r = 0.0;
+  double delta_f = u_prev_;
+  double beta = atan2(lf_*tan(delta_r) + lr_ * tan(delta_f), lf_+lr_);
+  double v = vx/cos(beta);
+  double y_dot = v*sin(phi + beta);
+
+
+  double e1 = current_pose_.position.y - trajectory_.pose.position.y;
+  double e1_dot = y_dot + vx*(phi - phi_des);
+  double e2 = phi - phi_des;
+  double e2_dot =  current_vel_.twist.angular.z - phi_des_rps;
+
+  // if(last_nearest_index_>105 ){
+  //   e1=-e1;
+  // }
+
+   
+
+
+  Eigen::Vector<double,4> state = Eigen::Vector<double,4>(
+   e1, //trajectory_.pose.position.y - current_pose_.position.y
+   e1_dot, ///trajectory_.lateral_velocity_mps - current_vel_.twist.linear.y 
+   e2,
+   e2_dot
+   );
+
+  double u = lqr_->calculate_control_signal(vx,phi_des_rps,tp, state,R);
+  // auto time = (double)(input_data.current_trajectory.header.stamp.sec + input_data.current_trajectory.header.stamp.nanosec*1e-9);
+
+  if(last_nearest_index_>105){
+    u=-u;
+  }
   
+
+
+  u_prev_=u;
+
   RCLCPP_ERROR(
     logger_,
     "\n --- Run --- \n"
@@ -108,11 +195,24 @@ LateralOutput LqrLateralController::run(const InputData & input_data)
     "- phi: %f \n"
     "- phi_des: %f \n"
     "- heading_rate_rps: %f \n"
-    "- innex: %ld \n"
-    "- rps: %f \n"
-    "- Z: %f \n"
+    "- innex : %ld \n"
+    "- Z_angular_vel: %f \n"
+    "y_dot_res %f \n"
+    " trajectory_.longitudinal_velocity_mps %f \n"
+    " timestamp %f \n"
+    " time ros %f \n"
+    "y curr %f \n"
+    "curvature %f \n"
+    "actual x %f \n"
+    "R %f"
+    "current position %f"
+    "pos des %f"
+  
     "--- --- ---",
-    u, phi, phi_des, trajectory_.heading_rate_rps, *closest_idx_result, rps, current_vel_.twist.angular.z); // TODO: Change from ERROR to INFO/DEBUG
+    u*180/M_PI, phi, phi_des, phi_des_rps, *closest_idx_result,current_vel_.twist.angular.z, y_dot_des,trajectory_.longitudinal_velocity_mps,time,tp,y_dot,curvature_,vx,R,current_pose_.position.y,trajectory_.pose.position.y); // TODO: Change from ERROR to INFO/DEBU
+
+  time_prev_=time;
+
 
   const auto cmd_msg = generateOutputControlCmd(u);
 

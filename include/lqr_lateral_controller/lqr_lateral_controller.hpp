@@ -29,6 +29,7 @@
 
 #include "lqr_lateral_controller/lqr.hpp"
 #include "lqr_lateral_controller/visibility_control.hpp"
+#include <cmath>
 
 using autoware::motion::control::trajectory_follower::InputData;
 using autoware::motion::control::trajectory_follower::LateralControllerBase;
@@ -75,7 +76,16 @@ private:
   // Parameters
   Param param_{};
   double prev_phi_des_;
+  double y_des_prev_;
+  double y_prev_;
+  double u_prev_;
+  double time_prev_;
   size_t last_nearest_index_;
+  double curvature_;
+  double e_yLeI_;
+
+  double y_dot_des;
+  double y_dot;
   // Algorithm
   std::shared_ptr<lqr_lateral_controller::LQR> lqr_;
 
