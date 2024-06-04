@@ -83,7 +83,7 @@ LateralOutput LqrLateralController::run(const InputData & input_data)
   current_steering_ = input_data.current_steering;
 
   auto output_tp_array_ = motion_utils::convertToTrajectoryPointArray(input_data.current_trajectory);
-  const auto closest_idx_result = motion_utils::findNearestIndex(output_tp_array_, current_pose_, 10.0, M_PI);
+  const auto closest_idx_result = motion_utils::findNearestIndex(output_tp_array_, current_pose_, 5.0, M_PI);
 
   try
   {
@@ -125,8 +125,44 @@ LateralOutput LqrLateralController::run(const InputData & input_data)
   double tp = time-time_prev_;
   time_prev_ = time;
 
+  auto orient_cur_message = current_odometry_.pose.pose.orientation;
+
+  auto orient_des_message = trajectory_.pose.orientation;
+
+  Eigen::Quaterniond orient_cur(orient_cur_message.w,orient_cur_message.x,orient_cur_message.y,orient_cur_message.z);
+  Eigen::Quaterniond orient_des(orient_des_message.w,orient_des_message.x,orient_des_message.y,orient_des_message.z);
+
+  Eigen::Quaterniond e_quat = orient_cur*orient_des.inverse();
+
+
+
+  geometry_msgs::msg::Quaternion quaternion_msg;
+  quaternion_msg.w = e_quat.w();
+  quaternion_msg.x = e_quat.x();
+  quaternion_msg.y = e_quat.y();
+  quaternion_msg.z = e_quat.z();
+
+  auto error_orient = tf2::getYaw(quaternion_msg);
+
+
+ 
   auto phi = tf2::getYaw(current_odometry_.pose.pose.orientation);
   auto phi_des = tf2::getYaw(trajectory_.pose.orientation);
+
+  //  if (phi <-1.5) {
+
+  //   RCLCPP_ERROR(logger_,"WARUNEK PHIII phi_diff %f ", phi);
+
+  //     auto diff = M_PI + phi;
+
+  //     phi = M_PI ;
+
+  //   RCLCPP_ERROR(logger_,"AAAAAAAAAAAAAAA WARUNEK PHIII diff %f ", diff);
+
+
+  // }
+
+
 
   // if((phi_des>2.8)&& (phi<0)){
   //   double val = M_PI- abs(phi);
@@ -165,6 +201,9 @@ LateralOutput LqrLateralController::run(const InputData & input_data)
 
   // if(last_nearest_index_>105 ){
   //   e1=-e1;
+  //   e1_dot = -e1_dot;
+  //   e2=-e2;
+  //   e2_dot=-e2_dot;
   // }
 
    
@@ -177,12 +216,18 @@ LateralOutput LqrLateralController::run(const InputData & input_data)
    e2_dot
    );
 
-  double u = lqr_->calculate_control_signal(vx,phi_des_rps,tp, state,R);
+  double u = lqr_->calculate_control_signal(vx,phi_des_rps,tp, state,R,last_nearest_index_);
   // auto time = (double)(input_data.current_trajectory.header.stamp.sec + input_data.current_trajectory.header.stamp.nanosec*1e-9);
 
-  if(last_nearest_index_>105){
+  if(last_nearest_index_>104 ){
     u=-u;
   }
+
+
+
+  // if(last_nearest_index_>134){
+  //   u=-u;
+  // }
   
 
 
@@ -207,9 +252,10 @@ LateralOutput LqrLateralController::run(const InputData & input_data)
     "R %f"
     "current position %f"
     "pos des %f"
+    "error yaw %f"
   
     "--- --- ---",
-    u*180/M_PI, phi, phi_des, phi_des_rps, *closest_idx_result,current_vel_.twist.angular.z, y_dot_des,trajectory_.longitudinal_velocity_mps,time,tp,y_dot,curvature_,vx,R,current_pose_.position.y,trajectory_.pose.position.y); // TODO: Change from ERROR to INFO/DEBU
+    u*180/M_PI, phi, phi_des, phi_des_rps, *closest_idx_result,current_vel_.twist.angular.z, y_dot_des,trajectory_.longitudinal_velocity_mps,time,tp,y_dot,curvature_,vx,R,current_pose_.position.y,trajectory_.pose.position.y,error_orient); // TODO: Change from ERROR to INFO/DEBU
 
   time_prev_=time;
 

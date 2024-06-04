@@ -26,6 +26,7 @@
 #include "tf2/utils.h"
 #include "autoware_auto_planning_msgs/msg/trajectory.hpp"
 #include "autoware_auto_planning_msgs/msg/trajectory_point.hpp"
+#include <geometry_msgs/msg/quaternion.hpp>
 
 #include "lqr_lateral_controller/lqr.hpp"
 #include "lqr_lateral_controller/visibility_control.hpp"

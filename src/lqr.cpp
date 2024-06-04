@@ -85,7 +85,7 @@ void LQR::set_R(const double & r)
   R_ = r;
 }
 
-Eigen::RowVector<double,4> LQR::get_K(double v_x, double yaw_des_dot,const double & tp)
+Eigen::RowVector<double,4> LQR::get_K(double v_x, double yaw_des_dot,const double & tp,const size_t & index)
 {
   Eigen::Matrix4d  A = get_A(v_x);
   Eigen::Vector4d B = get_B();
@@ -142,7 +142,21 @@ Eigen::RowVector<double,4> LQR::get_K(double v_x, double yaw_des_dot,const doubl
   Eigen::Matrix4d  Q_f;
   // Q_f.diagonal() << 15, 10, 10, 10;
   Q_f=C*C.transpose()*tp;
-  Q_f(0,0) =5e-2;
+  Q_f(0,0) =1e-2;
+
+  if((index>104) && (index<230)){
+    Q_f(0,0) =5e-1;
+    Q_f(2,2) =0.0;
+
+  }
+  if(index>230){
+    Q_f(0,0) =1e-1;
+  }
+
+  // if(index>127){
+  //   Q_f(0,0) =2e-1;
+
+  // }
 
   Q_ = Q_f;
   R_=1e-4;
@@ -184,18 +198,22 @@ Eigen::RowVector<double,4> LQR::get_K(double v_x, double yaw_des_dot,const doubl
  const double res = (R_ + Gamma.transpose() * Pt * Gamma);
  RCLCPP_INFO(logger_, "Res %f ", res);
 
- const Eigen::RowVector<double,4> K = -1/res * Gamma.transpose() * Pt * Phi;
+ Eigen::RowVector<double,4> K = -1/res * Gamma.transpose() * Pt * Phi;
+
+ if((index>104) && (230>index)){
+  K(2)=0.0;
+ }
 
   return K;
 }
 
-double LQR::calculate_control_signal(const double & v_x, const double & yaw_des_dot,const double & tp,const  Eigen::Vector4d & xstate, const double & R)
+double LQR::calculate_control_signal(const double & v_x, const double & yaw_des_dot,const double & tp,const  Eigen::Vector4d & xstate, const double & R,const size_t & index)
 {
   RCLCPP_INFO(logger_, "Calculate control signal.");
 
   x_state_ = xstate;
   
-  Eigen::RowVector<double,4> K = get_K(v_x,yaw_des_dot,tp);
+  Eigen::RowVector<double,4> K = get_K(v_x,yaw_des_dot,tp,index);
   RCLCPP_INFO(logger_, "K size %ld, %ld", K.rows(), K.cols());
 
   RCLCPP_INFO(logger_, "x_state_ %f %f %f %f \n ", 
