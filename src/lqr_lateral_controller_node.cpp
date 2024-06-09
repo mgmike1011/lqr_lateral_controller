@@ -23,15 +23,6 @@ LqrLateralControllerNode::LqrLateralControllerNode(const rclcpp::NodeOptions & o
   //
   //  NOT USED - launch from autoware
   //
-
-  // Eigen::Vector4d state = Eigen::Vector4d(0.1-1.0,0.05-0.5,1-20,0.05-0.5);
-  // std::cout<<"test111"<<std::endl;
-  // // std::cout<<lqr_->x_state_(0)<<std::endl;
-  // // auto u = lqr_->calculate_control_signal(5.0,0.1,state); 
-  // std::cout<<u<<std::endl;
-  
-
-  std::cout<<"test22"<<std::endl;
 }
 
 }  // namespace lqr_lateral_controller

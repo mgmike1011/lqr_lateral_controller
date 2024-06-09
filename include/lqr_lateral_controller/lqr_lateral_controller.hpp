@@ -15,22 +15,25 @@
 #ifndef LQR_LATERAL_CONTROLLER__LQR_LATERAL_CONTROLLER_HPP_
 #define LQR_LATERAL_CONTROLLER__LQR_LATERAL_CONTROLLER_HPP_
 
-#include <cstdint>
-#include <memory>
-
+#include "lqr_lateral_controller/lqr.hpp"
+#include "lqr_lateral_controller/visibility_control.hpp"
 #include "rclcpp/rclcpp.hpp"
+#include "tf2/exceptions.h"
+#include "tf2/utils.h"
+#include "tf2_ros/buffer.h"
+#include "tf2_ros/transform_listener.h"
 #include "trajectory_follower_base/lateral_controller_base.hpp"
+
+#include "autoware_auto_planning_msgs/msg/trajectory.hpp"
+#include "autoware_auto_planning_msgs/msg/trajectory_point.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
 #include "geometry_msgs/msg/twist_stamped.hpp"
 #include "tf2_geometry_msgs/tf2_geometry_msgs.hpp"
-#include "tf2/utils.h"
-#include "autoware_auto_planning_msgs/msg/trajectory.hpp"
-#include "autoware_auto_planning_msgs/msg/trajectory_point.hpp"
 #include <geometry_msgs/msg/quaternion.hpp>
 
-#include "lqr_lateral_controller/lqr.hpp"
-#include "lqr_lateral_controller/visibility_control.hpp"
 #include <cmath>
+#include <cstdint>
+#include <memory>
 
 using autoware::motion::control::trajectory_follower::InputData;
 using autoware::motion::control::trajectory_follower::LateralControllerBase;
@@ -47,7 +50,6 @@ struct Param
   double wheel_base;
   double max_steering_angle;  // [rad]
   double converged_steer_rad_;
-
 };
 
 class LQR_LATERAL_CONTROLLER_PUBLIC LqrLateralController : public LateralControllerBase
@@ -60,13 +62,13 @@ public:
   void testObject() const;
 
 private:
-  bool isReady([[maybe_unused]]const InputData & input_data) override;  // From base class
-  LateralOutput run(InputData const & input_data) override;  // From base class
+  bool isReady([[maybe_unused]] const InputData & input_data) override;  // From base class
+  LateralOutput run(InputData const & input_data) override;              // From base class
 
   // Logger and clock
   rclcpp::Clock::SharedPtr clock_;
   rclcpp::Logger logger_;
-  
+
   // Algorithm input data
   geometry_msgs::msg::Pose current_pose_;
   autoware_auto_planning_msgs::msg::TrajectoryPoint trajectory_;
@@ -89,9 +91,12 @@ private:
   double y_dot;
   // Algorithm
   std::shared_ptr<lqr_lateral_controller::LQR> lqr_;
+  // tf2
+  std::shared_ptr<tf2_ros::TransformListener> tf_listener_{nullptr};
+  std::unique_ptr<tf2_ros::Buffer> tf_buffer_;
 
   // Methods
-  AckermannLateralCommand generateOutputControlCmd(double& target_curvature);
+  AckermannLateralCommand generateOutputControlCmd(double & target_curvature);
   bool calcIsSteerConverged(const AckermannLateralCommand & cmd);
 };
 
