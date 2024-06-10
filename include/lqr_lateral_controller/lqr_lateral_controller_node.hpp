@@ -19,6 +19,9 @@
 #include <rclcpp/rclcpp.hpp>
 
 #include "lqr_lateral_controller/lqr_lateral_controller.hpp"
+#include "lqr_lateral_controller/lqr.hpp"
+#include <Eigen/Dense>
+#include <math.h>
 
 namespace lqr_lateral_controller
 {

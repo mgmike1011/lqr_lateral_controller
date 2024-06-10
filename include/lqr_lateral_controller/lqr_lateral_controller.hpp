@@ -15,15 +15,25 @@
 #ifndef LQR_LATERAL_CONTROLLER__LQR_LATERAL_CONTROLLER_HPP_
 #define LQR_LATERAL_CONTROLLER__LQR_LATERAL_CONTROLLER_HPP_
 
-#include <cstdint>
-#include <memory>
-
-#include "rclcpp/rclcpp.hpp"
-#include "trajectory_follower_base/lateral_controller_base.hpp"
-#include "geometry_msgs/msg/pose_stamped.hpp"
-
 #include "lqr_lateral_controller/lqr.hpp"
 #include "lqr_lateral_controller/visibility_control.hpp"
+#include "rclcpp/rclcpp.hpp"
+#include "tf2/exceptions.h"
+#include "tf2/utils.h"
+#include "tf2_ros/buffer.h"
+#include "tf2_ros/transform_listener.h"
+#include "trajectory_follower_base/lateral_controller_base.hpp"
+
+#include "autoware_auto_planning_msgs/msg/trajectory.hpp"
+#include "autoware_auto_planning_msgs/msg/trajectory_point.hpp"
+#include "geometry_msgs/msg/pose_stamped.hpp"
+#include "geometry_msgs/msg/twist_stamped.hpp"
+#include "tf2_geometry_msgs/tf2_geometry_msgs.hpp"
+#include <geometry_msgs/msg/quaternion.hpp>
+
+#include <cmath>
+#include <cstdint>
+#include <memory>
 
 using autoware::motion::control::trajectory_follower::InputData;
 using autoware::motion::control::trajectory_follower::LateralControllerBase;
@@ -37,25 +47,9 @@ namespace lqr_lateral_controller
 
 struct Param
 {
-  // Global Parameters
   double wheel_base;
   double max_steering_angle;  // [rad]
-
-  // Algorithm Parameters
-  double ld_velocity_ratio;  // TDOO: Declare more parameters
-  // double ld_lateral_error_ratio;
-  // double ld_curvature_ratio;
-  // double min_lookahead_distance;
-  // double max_lookahead_distance;
-  // double reverse_min_lookahead_distance;  // min_lookahead_distance in reverse gear
-  // double converged_steer_rad_;
-  // double prediction_ds;
-  // double prediction_distance_length;  // Total distance of prediction trajectory
-  // double resampling_ds;
-  // double curvature_calculation_distance;
-  // double long_ld_lateral_error_threshold;
-  // bool enable_path_smoothing;
-  // int path_filter_moving_ave_num;
+  double converged_steer_rad_;
 };
 
 class LQR_LATERAL_CONTROLLER_PUBLIC LqrLateralController : public LateralControllerBase
@@ -65,28 +59,45 @@ public:
   explicit LqrLateralController(rclcpp::Node & node);
   ~LqrLateralController() = default;
 
-  int64_t testObject(int64_t bar) const;
+  void testObject() const;
 
 private:
-  bool isReady([[maybe_unused]]const InputData & input_data) override;  // From base class
-  LateralOutput run(InputData const & input_data) override;  // From base class
+  bool isReady([[maybe_unused]] const InputData & input_data) override;  // From base class
+  LateralOutput run(InputData const & input_data) override;              // From base class
 
   // Logger and clock
   rclcpp::Clock::SharedPtr clock_;
   rclcpp::Logger logger_;
-  
+
+  // Algorithm input data
   geometry_msgs::msg::Pose current_pose_;
-  autoware_auto_planning_msgs::msg::Trajectory trajectory_;
+  autoware_auto_planning_msgs::msg::TrajectoryPoint trajectory_;
   nav_msgs::msg::Odometry current_odometry_;
   autoware_auto_vehicle_msgs::msg::SteeringReport current_steering_;
-
-  AckermannLateralCommand generateOutputControlCmd(const double& target_curvature);
+  geometry_msgs::msg::TwistWithCovariance current_vel_;
 
   // Parameters
   Param param_{};
+  double prev_phi_des_;
+  double y_des_prev_;
+  double y_prev_;
+  double u_prev_;
+  double time_prev_;
+  size_t last_nearest_index_;
+  double curvature_;
+  double e_yLeI_;
 
+  double y_dot_des;
+  double y_dot;
   // Algorithm
-  std::unique_ptr<LQR> lqr_;
+  std::shared_ptr<lqr_lateral_controller::LQR> lqr_;
+  // tf2
+  std::shared_ptr<tf2_ros::TransformListener> tf_listener_{nullptr};
+  std::unique_ptr<tf2_ros::Buffer> tf_buffer_;
+
+  // Methods
+  AckermannLateralCommand generateOutputControlCmd(double & target_curvature);
+  bool calcIsSteerConverged(const AckermannLateralCommand & cmd);
 };
 
 }  // namespace lqr_lateral_controller
