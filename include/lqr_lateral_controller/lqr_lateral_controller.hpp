@@ -50,6 +50,8 @@ struct Param
   double wheel_base;
   double max_steering_angle;  // [rad]
   double converged_steer_rad_;
+  double lf_;
+  double lr_;
 };
 
 class LQR_LATERAL_CONTROLLER_PUBLIC LqrLateralController : public LateralControllerBase
@@ -78,17 +80,12 @@ private:
 
   // Parameters
   Param param_{};
-  double prev_phi_des_;
-  double y_des_prev_;
-  double y_prev_;
   double u_prev_;
-  double time_prev_;
   size_t last_nearest_index_;
   double curvature_;
-  double e_yLeI_;
+  double delta_r_;
 
-  double y_dot_des;
-  double y_dot;
+
   // Algorithm
   std::shared_ptr<lqr_lateral_controller::LQR> lqr_;
   // tf2
