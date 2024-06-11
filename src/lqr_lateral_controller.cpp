@@ -33,20 +33,18 @@ LqrLateralController::LqrLateralController(rclcpp::Node & node)
   // Controller
   this->lqr_ = std::make_shared<lqr_lateral_controller::LQR>();
   // Parameters
-  prev_phi_des_ = 0.0;
-  time_prev_ = 0.0;
   last_nearest_index_ = 0;
-  y_des_prev_ = 0.0;
-  y_prev_ = 0.0;
   u_prev_ = 0.0;
   curvature_ = 0.0;
-  e_yLeI_ = 0.0;
-  y_dot_des = 0.0;
-  y_dot = 0.0;
+  delta_r_ = 0.0;
+ 
   // Vehicle Parameters
   const auto vehicle_info = vehicle_info_util::VehicleInfoUtil(node).getVehicleInfo();
   param_.wheel_base = vehicle_info.wheel_base_m;
   param_.max_steering_angle = vehicle_info.max_steer_angle_rad;
+
+  param_.lf_=vehicle_info.front_overhang_m;
+  param_.lr_=vehicle_info.rear_overhang_m;
   // tf2
   tf_buffer_ = std::make_unique<tf2_ros::Buffer>(node.get_clock());
   tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
@@ -91,27 +89,6 @@ LateralOutput LqrLateralController::run(const InputData & input_data)
   const auto closest_idx_result =
     motion_utils::findNearestIndex(output_tp_array_, current_pose_, 5.0, M_PI);
 
-  // tf2
-  geometry_msgs::msg::TransformStamped t;
-  try {
-    t = tf_buffer_->lookupTransform("map", "base_link", tf2::TimePointZero);
-    RCLCPP_DEBUG(
-      logger_,
-      "\n --- Run --- \n"
-      "translation x: %f\n"
-      "translation y: %f\n"
-      "translation z: %f\n"
-      "orientation x: %f\n"
-      "orientation y: %f\n"
-      "orientation z: %f\n"
-      "orientation w: %f\n",
-      t.transform.translation.x, t.transform.translation.y, t.transform.translation.z,
-      t.transform.rotation.x, t.transform.rotation.y, t.transform.rotation.z,
-      t.transform.rotation.w);
-  } catch (const tf2::TransformException & ex) {
-    RCLCPP_ERROR(logger_, "\n --- Wrong tf2 --- \n");
-  }
-
   try {
     trajectory_ = output_tp_array_.at(*closest_idx_result);
     if ((last_nearest_index_ > 0) && (*closest_idx_result != last_nearest_index_)) {
@@ -139,21 +116,35 @@ LateralOutput LqrLateralController::run(const InputData & input_data)
     trajectory_ = output_tp_array_.at(last_nearest_index_);
   }
 
-  rclcpp::Time timestamp = input_data.current_trajectory.header.stamp;
-  const double time = timestamp.seconds() + timestamp.nanoseconds() / 1e9;
-  double tp = time - time_prev_;
-  time_prev_ = time;
 
-  auto orient_cur_message = current_odometry_.pose.pose.orientation;
+  // tf2
+  geometry_msgs::msg::TransformStamped t;
+  try {
+    t = tf_buffer_->lookupTransform("map", "base_link", tf2::TimePointZero);
+  } catch (const tf2::TransformException & ex) {
+    RCLCPP_ERROR(logger_, "\n --- Wrong tf2 --- \n");
+  }
+
 
   auto orient_des_message = trajectory_.pose.orientation;
 
+  geometry_msgs::msg::Quaternion quaternion_transfomred;
+
+  quaternion_transfomred.w = t.transform.rotation.w;
+  quaternion_transfomred.x = t.transform.rotation.x;
+  quaternion_transfomred.y = t.transform.rotation.y;
+  quaternion_transfomred.z = t.transform.rotation.z;
+
+
   const Eigen::Quaterniond orient_cur(
-    orient_cur_message.w, orient_cur_message.x, orient_cur_message.y, orient_cur_message.z);
+    quaternion_transfomred.w, quaternion_transfomred.x, quaternion_transfomred.y, quaternion_transfomred.z);
   const Eigen::Quaterniond orient_des(
     orient_des_message.w, orient_des_message.x, orient_des_message.y, orient_des_message.z);
 
-  Eigen::Quaterniond e_quat = orient_cur * orient_des.inverse();
+
+
+  Eigen::Quaterniond e_quat = orient_cur.normalized() * orient_des.inverse();
+  e_quat=e_quat.normalized();
 
   geometry_msgs::msg::Quaternion quaternion_msg;
   quaternion_msg.w = e_quat.w();
@@ -161,8 +152,14 @@ LateralOutput LqrLateralController::run(const InputData & input_data)
   quaternion_msg.y = e_quat.y();
   quaternion_msg.z = e_quat.z();
 
-  auto phi = tf2::getYaw(current_odometry_.pose.pose.orientation);
-  auto phi_des = tf2::getYaw(trajectory_.pose.orientation);
+  Eigen::Vector3d vel(current_vel_.twist.angular.x,current_vel_.twist.angular.y,current_vel_.twist.angular.z);
+  auto rotation =  orient_cur.normalized().toRotationMatrix();
+
+  auto vel_global =rotation*vel;
+
+
+  auto error_yaw = tf2::getYaw(quaternion_msg);
+  auto phi = tf2::getYaw(quaternion_transfomred);
 
   double vx = trajectory_.longitudinal_velocity_mps;
 
@@ -173,57 +170,29 @@ LateralOutput LqrLateralController::run(const InputData & input_data)
 
   double phi_des_rps = vx / R;
 
-  double lf_ = 0.114;  // [m] front overhang length
-  double lr_ = 0.11;
-  double delta_r = 0.0;
   double delta_f = u_prev_;
-  double beta = atan2(lf_ * tan(delta_r) + lr_ * tan(delta_f), lf_ + lr_);
+  double beta = atan2(param_.lf_ * tan(delta_r_) + param_.lr_ * tan(delta_f), 
+                                                    param_.lf_ + param_.lr_);
   double v = vx / cos(beta);
   double y_dot = v * sin(phi + beta);
 
   double e1 = current_pose_.position.y - trajectory_.pose.position.y;
-  double e1_dot = y_dot + vx * (phi - phi_des);
-  double e2 = phi - phi_des;
-  double e2_dot = current_vel_.twist.angular.z - phi_des_rps;
+  double e1_dot = y_dot + vx *error_yaw; 
+  double e2 = error_yaw;
+  double e2_dot = vel_global(2) - phi_des_rps;
+
+  if((last_nearest_index_ > 105) && (last_nearest_index_<220)){
+    e1=-e1;
+  }
 
   Eigen::Vector<double, 4> state = Eigen::Vector<double, 4>(
     e1,
     e1_dot,
     e2, e2_dot);
 
-  double u = lqr_->calculate_control_signal(vx, phi_des_rps, tp, state, R, last_nearest_index_);
-
-  if (last_nearest_index_ > 104) {
-    u = -u;
-  }
+  double u = lqr_->calculate_control_signal(vx, phi_des_rps, state, R, last_nearest_index_);
 
   u_prev_ = u;
-
-  RCLCPP_DEBUG(
-    logger_,
-    "\n --- Run --- \n"
-    "- control signal u: %f \n"
-    "- phi: %f \n"
-    "- phi_des: %f \n"
-    "- heading_rate_rps: %f \n"
-    "- innex : %ld \n"
-    "- Z_angular_vel: %f \n"
-    "y_dot_res %f \n"
-    " trajectory_.longitudinal_velocity_mps %f \n"
-    " timestamp %f \n"
-    " time ros %f \n"
-    "y curr %f \n"
-    "curvature %f \n"
-    "actual x %f \n"
-    "R %f"
-    "current position %f"
-    "pos des %f"
-    "--- --- ---",
-    u * 180 / M_PI, phi, phi_des, phi_des_rps, *closest_idx_result, current_vel_.twist.angular.z,
-    y_dot_des, trajectory_.longitudinal_velocity_mps, time, tp, y_dot, curvature_, vx, R,
-    current_pose_.position.y, trajectory_.pose.position.y); 
-
-  time_prev_ = time;
 
   const auto cmd_msg = generateOutputControlCmd(u);
 
